@@ -1,0 +1,27 @@
+{
+	"manifest_version": 2.0,
+	"id": "advanced_host_grid",
+	"type": "widget",
+	"name": "Advanced Host Grid",
+	"namespace": "AdvancedHostGrid",
+	"version": "1.0",
+	"author": "Custom",
+	"description": "Displays hosts in a grouped tree-table with configurable columns, color thresholds, and up to 3 nesting levels.",
+	"actions": {
+		"widget.advhostgrid.column.edit": {
+			"class": "ColumnEdit",
+			"view": "column.edit",
+			"layout": "layout.json"
+		},
+		"widget.advanced_host_grid.view": {
+			"class": "WidgetView"
+		}
+	},
+	"widget": {
+		"js_class": "WidgetAdvancedHostGrid"
+	},
+	"assets": {
+		"js": ["class.widget.js", "class.widget-field.grouping.js"],
+		"css": ["widget.css"]
+	}
+}
