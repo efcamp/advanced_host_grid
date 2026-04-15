@@ -1,12 +1,12 @@
 # Advanced Host Grid - Zabbix Module
 
-This widget module is meant to provide a status of all hosts, similar to what is available in SolarWinds. It is similar to the Top Hosts/items widgets, but with more customization.
+This widget module is meant to provide a status of all hosts, similar to the Nodes list in SolarWinds. It is similar to the native Top Hosts/items widgets, but with more customization.
 
 Features:
 * Increased host limit to 9999.
 * Item Value Column allows simple pattern matching.
 * Nested Grouping to 3 levels to create a Tree View.
-* Custom Labels/Color overrides for each Group level.
+   * Custom Labels/Color overrides for each Group level.
 * Filter by multiple values with custom logic.
 * Custom Maintenance grouping.
 
@@ -39,10 +39,10 @@ Features:
 ## Configuration
 1. **Maintenance**:
    * Check the box for **Show hosts in maintenance** and **Maintenance grouping override**.
-   * In the **Maintenance override** field, enter the level:label:color for hosts in Maintenance to use.
-   ** level: This is the **Group by** position that Maintenance group will replace, for example '1:' would place it as a root level replacing the first "Group by" category.
-   ** label: This will replace the node level label.
-   ** color: a hex color for the maintenance grouping to take, if left blank it will inherit the parent
+   * In the **Maintenance override** field, enter the **level**:**label**:**color** for hosts in Maintenance to use.
+      * level: This is the **Group by** position that Maintenance group will replace, for example '1:' would place it as a root level replacing the first "Group by" category.
+      * label: This will replace the node level label.
+      * color: a hex color for the maintenance grouping to take, if left blank it will use default 6c6c6c
 
 2. **Columns**:
 
