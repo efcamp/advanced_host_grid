@@ -43,9 +43,17 @@ class CWidgetFieldFiltersView extends CWidgetFieldView {
 					->setValue($col_field->getValue())
 					->addOptions(CSelect::createOptionsFromArray($col_field->getValues())),
 				
-				(new CTextBox('filter'.$i.'_target_param', $param_field->getValue()))
-					->setWidth(ZBX_TEXTAREA_SMALL_WIDTH)
-					->setAttribute('placeholder', _('Tag/Inv/Item Pattern')),
+				(new CDiv([
+					(new CTextBox('filter'.$i.'_target_param', $param_field->getValue()))
+						->setWidth(ZBX_TEXTAREA_SMALL_WIDTH)
+						->addClass('js-param-text')
+						->setAttribute('placeholder', _('Tag/Inv/Item Pattern')),
+					(new CSelect('filter'.$i.'_target_param_select'))
+						->setValue($param_field->getValue())
+						->addOptions(CSelect::createOptionsFromArray(Widget::INVENTORY_FIELDS))
+						->addClass('js-param-inventory')
+						->addStyle('display: none;')
+				])),
 
 				(new CSelect('filter'.$i.'_op'))
 					->setValue($op_field->getValue())

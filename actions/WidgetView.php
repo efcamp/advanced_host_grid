@@ -347,7 +347,14 @@ class WidgetView extends CControllerDashboardWidgetView {
 							}
 							break;
 						case WidgetForm::FILTER_TARGET_INVENTORY:
-							$match_values[] = $row['inventory'][$param] ?? '';
+							$inv_field = $param;
+							foreach (Widget::INVENTORY_FIELDS as $k => $l) {
+								if (strcasecmp($param, $l) === 0) {
+									$inv_field = $k;
+									break;
+								}
+							}
+							$match_values[] = $row['inventory'][$inv_field] ?? '';
 							break;
 						case WidgetForm::FILTER_TARGET_ITEM_VALUE:
 							if (isset($host_item_values[$row['hostid']][$param])) {
@@ -358,8 +365,13 @@ class WidgetView extends CControllerDashboardWidgetView {
 					}
 				}
 
-				if (empty($match_values) && ($op !== Widget::FILTER_OP_NOT_EQUALS && $op !== Widget::FILTER_OP_NOT_CONTAINS)) { 
-					$results[$i] = false; continue; 
+				if (empty($match_values)) {
+					$results[$i] = in_array($op, [
+						Widget::FILTER_OP_NOT_EQUALS,
+						Widget::FILTER_OP_NOT_CONTAINS,
+						Widget::FILTER_OP_NOT_EXISTS
+					]);
+					continue;
 				}
 
 				$res = false;
@@ -374,6 +386,8 @@ class WidgetView extends CControllerDashboardWidgetView {
 						case Widget::FILTER_OP_LESS_EQUAL: $m_res = ($is_numeric && (float)$raw <= (float)$val); break;
 						case Widget::FILTER_OP_CONTAINS: $m_res = (stripos((string)$raw, (string)$val) !== false); break;
 						case Widget::FILTER_OP_NOT_CONTAINS: $m_res = (stripos((string)$raw, (string)$val) === false); break;
+						case Widget::FILTER_OP_EXISTS: $m_res = ($raw !== '' && $raw !== null); break;
+						case Widget::FILTER_OP_NOT_EXISTS: $m_res = ($raw === '' || $raw === null); break;
 					}
 					if ($m_res) { $res = true; break; }
 				}

@@ -97,7 +97,8 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 			if ($filter_op > 0) {
 				$op_labels = [
 					1 => '=', 2 => '≠', 3 => '>', 4 => '<',
-					5 => '≥', 6 => '≤', 7 => '∋', 8 => '∌'
+					5 => '≥', 6 => '≤', 7 => '∋', 8 => '∌',
+					9 => _('exists'), 10 => _('not exists')
 				];
 				$op_label = $op_labels[$filter_op] ?? '?';
 				$filter_info = ' '.(new CSpan(

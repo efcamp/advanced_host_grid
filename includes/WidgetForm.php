@@ -214,7 +214,9 @@ class WidgetForm extends CWidgetForm {
 						Widget::FILTER_OP_GREATER_EQUAL => _('Greater or equal'),
 						Widget::FILTER_OP_LESS_EQUAL   => _('Less or equal'),
 						Widget::FILTER_OP_CONTAINS     => _('Contains'),
-						Widget::FILTER_OP_NOT_CONTAINS => _('Not contains')
+						Widget::FILTER_OP_NOT_CONTAINS => _('Not contains'),
+						Widget::FILTER_OP_EXISTS       => _('Exists'),
+						Widget::FILTER_OP_NOT_EXISTS   => _('Not exists')
 					]))->setDefault(Widget::FILTER_OP_NONE)
 				)
 				->addField(

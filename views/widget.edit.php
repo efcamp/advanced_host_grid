@@ -103,10 +103,14 @@ if (array_key_exists('filter_logic', $data['fields'])) {
 		window.widget_advanced_host_grid_form = new class {
 			init() {
 				const _this = this;
-				const targets = ['.WidgetForm::FILTER_TARGET_TAG_VALUE.', '.WidgetForm::FILTER_TARGET_INVENTORY.', '.WidgetForm::FILTER_TARGET_ITEM_VALUE.'];
+				const targets = [' . WidgetForm::FILTER_TARGET_TAG_VALUE . ', ' . WidgetForm::FILTER_TARGET_INVENTORY . ', ' . WidgetForm::FILTER_TARGET_ITEM_VALUE . '];
 
 				jQuery(document).on("change", "z-select[name*=\"filter\"][name*=\"_column\"]", function() {
 					_this._updateFields(targets);
+				});
+
+				jQuery(document).on("change", ".js-param-inventory", function() {
+					jQuery(this).closest("td").find(".js-param-text").val(jQuery(this).val());
 				});
 
 				// Small delay to ensure the form is fully rendered
@@ -114,6 +118,8 @@ if (array_key_exists('filter_logic', $data['fields'])) {
 			}
 
 			_updateFields(targets) {
+				const TARGET_INVENTORY = ' . WidgetForm::FILTER_TARGET_INVENTORY . ';
+
 				jQuery("z-select[name*=\"filter\"][name*=\"_column\"]").each(function() {
 					const name = jQuery(this).attr("name");
 					const match = name.match(/filter(\d)_column/);
@@ -122,14 +128,25 @@ if (array_key_exists('filter_logic', $data['fields'])) {
 						const i = match[1];
 						const val = parseInt(jQuery(this).val());
 						const enabled = targets.includes(val);
-						const $input = jQuery(`input[name*="filter${i}_target_param"]`);
+						const isInventory = (val === TARGET_INVENTORY);
+
+						const $td = jQuery(this).closest("tr").find("td:nth-child(3)");
+						const $input = $td.find(".js-param-text");
+						const $inventorySelect = $td.find(".js-param-inventory");
 
 						if ($input.length) {
-							$input.prop("disabled", !enabled).prop("readonly", !enabled);
+							$input.toggle(!isInventory).prop("disabled", !enabled).prop("readonly", !enabled || isInventory);
 							if (!enabled) {
 								$input.val("").addClass("readonly");
 							} else {
 								$input.removeClass("readonly");
+							}
+						}
+
+						if ($inventorySelect.length) {
+							$inventorySelect.toggle(isInventory).prop("disabled", !isInventory || !enabled);
+							if (isInventory && enabled && $inventorySelect.val() !== "" && $inventorySelect.val() !== null) {
+								$input.val($inventorySelect.val());
 							}
 						}
 					}

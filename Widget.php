@@ -37,6 +37,8 @@ class Widget extends CWidget {
 	public const FILTER_OP_LESS_EQUAL = 6;
 	public const FILTER_OP_CONTAINS = 7;
 	public const FILTER_OP_NOT_CONTAINS = 8;
+	public const FILTER_OP_EXISTS = 9;
+	public const FILTER_OP_NOT_EXISTS = 10;
 
 	// Default color palette.
 	public const DEFAULT_COLOR_PALETTE = [
