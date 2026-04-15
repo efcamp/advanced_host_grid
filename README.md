@@ -12,11 +12,15 @@ Features:
 
 ## Installation
 
-1. **Deployment**:
-   Copy the `advanced_host_grid` directory into your Zabbix frontend modules directory:
+1. **Download and Deploy**:
    ```bash
-   # Standard Zabbix installation path, assuming module was downloaded to current directory
-   sudo cp -r ~/advanced_host_grid /usr/share/zabbix/ui/modules/
+   # 1. Create the directory in standard Zabbix installation path
+   sudo mkdir -p /usr/share/zabbix/ui/modules/advanced_host_grid
+
+   # 2. Download and extract
+   curl -L https://github.com/efcamp/advanced_host_grid/archive/refs/heads/main.tar.gz \
+   | sudo tar -xz -C /usr/share/zabbix/ui/modules/advanced_host_grid --strip-components=1 \
+   --exclude='.gitattributes' --exclude='LICENSE' --exclude='README.md'
    ```
 
 2. **Permissions**:
