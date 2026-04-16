@@ -19,6 +19,8 @@ class WidgetView extends CControllerDashboardWidgetView {
 		$order_column = $this->fields_values['column'] ?? 0;
 		$order = $this->fields_values['order'] ?? Widget::ORDER_TOP_N;
 		$show_lines = $this->fields_values['show_lines'] ?? 100;
+		$show_host_count = (bool)($this->fields_values['show_host_count'] ?? false);
+		$grouping_color_full = (bool)($this->fields_values['grouping_color_full'] ?? false);
 		
 		// Maintenance override settings
 		$maintenance_override = (bool)($this->fields_values['maintenance_override'] ?? false);
@@ -295,6 +297,8 @@ class WidgetView extends CControllerDashboardWidgetView {
 			'group_by' => $group_by,
 			'grouped_data' => $grouped_data,
 			'host_count' => count($host_rows),
+			'show_host_count' => $show_host_count,
+			'grouping_color_full' => $grouping_color_full,
 			'user' => ['debug_mode' => $this->getDebugMode()]
 		]));
 	}

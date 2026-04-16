@@ -65,20 +65,34 @@ if (array_key_exists('filter_logic', $data['fields'])) {
 			: null
 	)
 	->addField(
+		array_key_exists('show_host_count', $data['fields'])
+			? new CWidgetFieldCheckBoxView($data['fields']['show_host_count'])
+			: null
+	)
+	->addItem([
 		array_key_exists('maintenance_override', $data['fields'])
-			? new CWidgetFieldCheckBoxView($data['fields']['maintenance_override'])
-			: null
-	)
-	->addField(
-		array_key_exists('maintenance_override_settings', $data['fields'])
-			? new CWidgetFieldTextBoxView($data['fields']['maintenance_override_settings'])
-			: null
-	)
+			? (new CLabel($data['fields']['maintenance_override']->getLabel(), $data['fields']['maintenance_override']->getName()))
+			: null,
+		(new CFormField([
+			array_key_exists('maintenance_override', $data['fields'])
+				? (new CWidgetFieldCheckBoxView($data['fields']['maintenance_override']))->getView()
+				: null,
+			' ',
+			array_key_exists('maintenance_override_settings', $data['fields'])
+				? (new CWidgetFieldTextBoxView($data['fields']['maintenance_override_settings']))->getView()
+				: null
+		]))
+	])
 	// ---- Columns ----
 	->addField($columns_view)
 
 	// ---- Grouping ----
 	->addField($grouping_view)
+	->addField(
+		array_key_exists('grouping_color_full', $data['fields'])
+			? new CWidgetFieldCheckBoxView($data['fields']['grouping_color_full'])
+			: null
+	)
 
 	// ---- Filters ----
 	->addField($filters_view)

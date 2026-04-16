@@ -84,8 +84,8 @@
 }
 
 .ahg-group-toggle {
-	padding: 4px 10px;
-	border-bottom: 1px solid #eef0f2;
+	padding: 2px 10px;
+	border-bottom: 0;
 	display: flex;
 	align-items: center;
 	gap: 6px;
@@ -112,7 +112,7 @@
 }
 
 .ahg-group-label {
-	font-weight: 600;
+	font-weight: normal;
 	color: #1f2c33;
 	margin-left: 4px;
 }
@@ -139,15 +139,26 @@
 }
 
 .ahg-host-cell {
-	padding: 6px 10px;
+	padding: 2px 10px;
+	border-bottom: 0;
+}
+
+/* Borders only on top-most grouping level */
+.ahg-group-level-0 .ahg-group-toggle {
+	border-top: 1px solid #eef0f2;
+	border-bottom: 1px solid #eef0f2;
+}
+
+/* If no grouping is used, show borders for all host rows */
+.ahg-table.ahg-no-grouping .ahg-host-cell {
 	border-bottom: 1px solid #f0f2f4;
 }
 
 /* Status circle */
 .ahg-status-circle {
 	display: inline-block;
-	width: 8px;
-	height: 8px;
+	width: 10px;
+	height: 10px;
 	border-radius: 50%;
 	background-color: #ccc;
 	flex-shrink: 0;
@@ -382,4 +393,9 @@
 
 .dark-theme .ahg-host-row:hover {
 	background-color: rgba(42, 181, 255, 0.06);
+}
+
+/* Configuration Form Refinements */
+.form-grid label[for="group_by"] {
+	font-weight: normal;
 }

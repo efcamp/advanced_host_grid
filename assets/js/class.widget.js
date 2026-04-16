@@ -22,6 +22,8 @@ class WidgetAdvancedHostGrid extends CWidget {
 		this._group_by = [];
 		this._grouped_data = [];
 		this._host_count = 0;
+		this._show_host_count = false;
+		this._grouping_color_full = false;
 		this._expanded = {};
 	}
 
@@ -30,6 +32,8 @@ class WidgetAdvancedHostGrid extends CWidget {
 		this._group_by = response.group_by || [];
 		this._grouped_data = response.grouped_data || [];
 		this._host_count = response.host_count || 0;
+		this._show_host_count = response.show_host_count || false;
+		this._grouping_color_full = response.grouping_color_full || false;
 
 		super.setContents(response);
 
@@ -62,6 +66,16 @@ class WidgetAdvancedHostGrid extends CWidget {
 		// Build table.
 		const table = document.createElement('table');
 		table.className = 'ahg-table';
+		if (this._group_by.length === 0) {
+			table.classList.add('ahg-no-grouping');
+		}
+
+		if (this._show_host_count && this._host_count > 0) {
+			const countBadge = document.createElement('div');
+			countBadge.className = 'ahg-host-count';
+			countBadge.textContent = `${this._host_count} ` + (this._host_count === 1 ? t('host') : t('hosts'));
+			this._container.appendChild(countBadge);
+		}
 
 		// Header.
 		const thead = document.createElement('thead');
@@ -149,9 +163,8 @@ class WidgetAdvancedHostGrid extends CWidget {
 			labelSpan.textContent = node.label;
 			labelSpan.style.marginLeft = '4px';
 
-			if (mappingColor) {
+			if (mappingColor && this._grouping_color_full) {
 				labelSpan.style.color = mappingColor;
-				labelSpan.style.fontWeight = 'bold';
 			}
 
 			tdExpand.appendChild(toggleIcon);

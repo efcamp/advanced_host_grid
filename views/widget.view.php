@@ -16,4 +16,6 @@
 	->setVar('group_by', $data['group_by'])
 	->setVar('grouped_data', $data['grouped_data'])
 	->setVar('host_count', $data['host_count'] ?? 0)
+	->setVar('show_host_count', $data['show_host_count'] ?? false)
+	->setVar('grouping_color_full', $data['grouping_color_full'] ?? false)
 	->show();

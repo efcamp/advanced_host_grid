@@ -211,6 +211,22 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 					}
 				}
 
+				function reIndexRows() {
+					// We do not strictly NEED to re-index names because sortorder[] handles it,
+					// but it keeps the indices clean and prevents potential issues with
+					// large gaps if many columns are added/removed.
+					jQuery(columns_table).find("tbody tr").not(":last-child").each(function(index) {
+						var row = this;
+						jQuery(row).find("input[type=hidden]").each(function() {
+							if (this.name.indexOf("sortorder") !== -1) {
+								this.value = index;
+							} else {
+								this.name = this.name.replace(/('.$field_name.')\[\d+\]/, "$1[" + index + "]");
+							}
+						});
+					});
+				}
+
 				function createColumnRow(index, col) {
 					var tr = document.createElement("tr");
 
@@ -273,6 +289,17 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 					return tr;
 				}
 
+				jQuery(columns_table).find("tbody").sortable({
+					items: "tr:not(:last-child)",
+					handle: "." + "'.ZBX_STYLE_DRAG_ICON.'",
+					cursor: "move",
+					opacity: 0.6,
+					axis: "y",
+					update: function() {
+						reIndexRows();
+					}
+				});
+
 				// Event delegation for Add / Edit / Remove.
 				columns_table.addEventListener("click", function(e) {
 
@@ -293,6 +320,8 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 							var tbody = columns_table.querySelector("tbody");
 							var add_row = add_btn.closest("tr");
 							tbody.insertBefore(new_row, add_row);
+
+							reIndexRows();
 						});
 
 						return;
@@ -373,7 +402,10 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 					var remove_btn = e.target.closest("button[name=remove]");
 					if (remove_btn) {
 						var row = remove_btn.closest("tr");
-						if (row) row.remove();
+						if (row) {
+							row.remove();
+							reIndexRows();
+						}
 					}
 				});
 			}

@@ -139,6 +139,10 @@ class WidgetForm extends CWidgetForm {
 				: new CWidgetFieldTags('tags')
 			)
 			->addField(
+				(new CWidgetFieldCheckBox('show_host_count', _('Show total host count')))
+					->setDefault(0)
+			)
+			->addField(
 				(new CWidgetFieldCheckBox('maintenance',
 					$this->isTemplateDashboard()
 						? _('Show data in maintenance')
@@ -161,6 +165,10 @@ class WidgetForm extends CWidgetForm {
 			->addField(
 				(new CWidgetFieldGrouping('group_by', _('Group by')))
 					->setDefault([])
+			)
+			->addField(
+				(new CWidgetFieldCheckBox('grouping_color_full', _('Color entire group label')))
+					->setDefault(0)
 			)
 			->addField(
 				(new CWidgetFieldSelect('column', _('Order by'), $this->field_column_values))

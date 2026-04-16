@@ -131,7 +131,9 @@ class Widget extends CWidget {
 				'No data' => _('No data'),
 				'Unknown' => _('Unknown'),
 				'Collapse all' => _('Collapse all'),
-				'Expand all' => _('Expand all')
+				'Expand all' => _('Expand all'),
+				'host' => _('host'),
+				'hosts' => _('hosts')
 			]
 		];
 	}
