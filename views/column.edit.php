@@ -61,7 +61,28 @@ $form_grid->addItem([
 		(new CTextBox('item', $data['item']))
 			->setWidth(ZBX_TEXTAREA_STANDARD_WIDTH)
 			->setAttribute('placeholder', _('Item name or pattern'))
+	))->addClass('js-item-row'),
+	(new CLabel(_('Prepend item name'), 'prepend_item'))->addClass('js-item-row'),
+	(new CFormField(
+		(new CCheckBox('prepend_item'))
+			->setChecked((int) $data['prepend_item'] === 1)
+			->setUncheckedValue(0)
 	))->addClass('js-item-row')
+]);
+
+$form_grid->addItem([
+	(new CLabel(_('Substring begin'), 'prepend_item_begin'))->addClass('js-prepend-ext-row'),
+	(new CFormField(
+		(new CTextBox('prepend_item_begin', $data['prepend_item_begin']))
+			->setWidth(ZBX_TEXTAREA_STANDARD_WIDTH)
+			->setAttribute('placeholder', _('Optional starting string'))
+	))->addClass('js-prepend-ext-row'),
+	(new CLabel(_('Substring end'), 'prepend_item_end'))->addClass('js-prepend-ext-row'),
+	(new CFormField(
+		(new CTextBox('prepend_item_end', $data['prepend_item_end']))
+			->setWidth(ZBX_TEXTAREA_STANDARD_WIDTH)
+			->setAttribute('placeholder', _('Optional ending string'))
+	))->addClass('js-prepend-ext-row')
 ]);
 
 // Text.
@@ -83,6 +104,17 @@ $form_grid->addItem([
 		(new CColorPicker('base_color'))
 			->setColor($data['base_color'])
 			->allowEmpty()
+	)
+]);
+
+// Display item value as.
+$form_grid->addItem([
+	new CLabel(_('Display item value as'), 'display_value_as'),
+	new CFormField(
+		(new CRadioButtonList('display_value_as', (int) $data['display_value_as']))
+			->addValue(_('Numeric'), 0)
+			->addValue(_('Text'), 1)
+			->setModern()
 	)
 ]);
 
@@ -118,6 +150,15 @@ $form_grid->addItem([
 	))->addClass('js-min-max-row')
 ]);
 
+// Decimal places.
+$form_grid->addItem([
+	(new CLabel(_('Decimal places'), 'decimal_places'))->addClass('js-numeric-row'),
+	(new CFormField(
+		(new CNumericBox('decimal_places', $data['decimal_places'], 2))
+			->setWidth(ZBX_TEXTAREA_NUMERIC_STANDARD_WIDTH)
+	))->addClass('js-numeric-row')
+]);
+
 // Thresholds.
 $threshold_header_row = [
 	'',
@@ -151,9 +192,70 @@ $thresholds = (new CDiv([
 	->addClass(ZBX_STYLE_TABLE_FORMS_SEPARATOR)
 	->setWidth(ZBX_TEXTAREA_STANDARD_WIDTH);
 
+// Highlights.
+$highlight_header_row = [
+	'',
+	_('Pattern'),
+	(new CColHeader(''))->setWidth('100%')
+];
+
+$highlights = (new CDiv([
+	(new CTable())
+		->setId('highlights_table')
+		->addClass(ZBX_STYLE_TABLE_FORMS)
+		->setHeader($highlight_header_row)
+		->setFooter(new CRow(
+			(new CCol(
+				(new CButtonLink(_('Add')))->addClass('element-table-add')
+			))->setColSpan(count($highlight_header_row))
+		)),
+	(new CTemplateTag('highlights-row-tmpl'))
+		->addItem((new CRow([
+			(new CColorPicker('highlights[#{rowNum}][color]'))
+				->setColor('#{color}')
+				->allowEmpty(),
+			(new CTextBox('highlights[#{rowNum}][pattern]', '#{pattern}', false))
+				->setWidth(ZBX_TEXTAREA_MEDIUM_WIDTH)
+				->setAriaRequired(),
+			(new CButton('highlights[#{rowNum}][remove]', _('Remove')))
+				->addClass(ZBX_STYLE_BTN_LINK)
+				->addClass('element-table-remove')
+		]))->addClass('form_row'))
+]))
+	->addClass(ZBX_STYLE_TABLE_FORMS_SEPARATOR)
+	->setWidth(ZBX_TEXTAREA_STANDARD_WIDTH);
+
 $form_grid->addItem([
 	(new CLabel(_('Thresholds'), 'thresholds_table'))->addClass('js-thresholds-row'),
 	(new CFormField($thresholds))->addClass('js-thresholds-row')
+]);
+
+$form_grid->addItem([
+	(new CLabel(_('Use status for parent'), 'apply_to_node'))->addClass('js-apply-node-row'),
+	(new CFormField(
+		(new CCheckBox('apply_to_node'))
+			->setId('apply_to_node')
+			->setChecked((int) $data['apply_to_node'] === 1)
+			->setUncheckedValue(0)
+	))->addClass('js-apply-node-row')
+]);
+
+$form_grid->addItem([
+	(new CLabel(_('Parent status priority'), 'parent_status_priority'))->addClass('js-parent-priority-row'),
+	(new CFormField(
+		(new CSelect('parent_status_priority'))
+			->setId('parent_status_priority')
+			->setValue((int) $data['parent_status_priority'])
+			->addOptions(CSelect::createOptionsFromArray([
+				0 => _('Highest matched'),
+				1 => _('Lowest matched')
+			]))
+	))->addClass('js-parent-priority-row')
+]);
+
+$form_grid->addItem([
+	(new CLabel(_('Highlights'), 'highlights_table'))->addClass('js-highlights-row'),
+	(new CFormField($highlights))->addClass('js-highlights-row')
 ]);
 
 $form
@@ -163,6 +265,7 @@ $form
 			advhostgrid_column_edit_form.init('.json_encode([
 				'form_id' => $form->getId(),
 				'thresholds' => $data['thresholds'],
+				'highlights' => $data['highlights'],
 				'colors' => $data['colors']
 			], JSON_THROW_ON_ERROR).');
 		'))->setOnDocumentReady()

@@ -182,7 +182,7 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 
 				function addColumnHiddenInputs(container, index, col) {
 					var fields = ["data", "name", "item", "text", "display",
-						"base_color", "min", "max", "filter_operator", "filter_value"];
+						"base_color", "min", "max", "prepend_item", "prepend_item_begin", "prepend_item_end", "apply_to_node", "parent_status_priority", "decimal_places", "display_value_as", "columnid"];
 
 					container.appendChild(createHiddenInput(
 						"sortorder[" + "'.$field_name.'" + "][]", index
@@ -206,6 +206,20 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 							container.appendChild(createHiddenInput(
 								"'.$field_name.'[" + index + "][thresholds][" + t_idx + "][threshold]",
 								t.threshold || ""
+							));
+						});
+					}
+
+					// Highlights.
+					if (col.highlights && Array.isArray(col.highlights)) {
+						col.highlights.forEach(function(highlight, h_index) {
+							container.appendChild(createHiddenInput(
+								"'.$field_name.'[" + index + "][highlights][" + h_index + "][color]",
+								highlight.color
+							));
+							container.appendChild(createHiddenInput(
+								"'.$field_name.'[" + index + "][highlights][" + h_index + "][pattern]",
+								highlight.pattern
 							));
 						});
 					}
@@ -312,6 +326,11 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 						}).$dialogue[0].addEventListener("dialogue.submit", function(ev) {
 							var col = ev.detail;
 							var new_index = getNextColumnIndex();
+
+							// Ensure unique column ID for persistence across reordering
+							if (!col.columnid) {
+								col.columnid = "col_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+							}
 
 							// Create visible row with hidden inputs.
 							var new_row = createColumnRow(new_index, col);

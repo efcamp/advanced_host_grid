@@ -75,7 +75,9 @@ class CWidgetFieldGroupingView extends CWidgetFieldView {
 							Widget::GROUP_BY_HOST_GROUP => _('Host group'),
 							Widget::GROUP_BY_SEVERITY => _('Severity'),
 							Widget::GROUP_BY_HOST_INVENTORY => _('Host inventory'),
-							Widget::GROUP_BY_ITEM_VALUE => _('Item value')
+							Widget::GROUP_BY_ITEM_VALUE => _('Item value'),
+							Widget::GROUP_BY_HOST_NAME => _('Host name'),
+							Widget::GROUP_BY_ITEM_NAME => _('Item name')
 						]))
 						->setValue('#{attribute}')
 						->setId($this->field->getName().'_#{rowNum}_attribute')

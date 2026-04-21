@@ -21,12 +21,12 @@ window.advhostgrid_column_edit_form = new class {
 	 */
 	#form;
 
-	init({form_id, thresholds, colors}) {
+	init({form_id, thresholds, highlights, colors}) {
 		this.#overlay = overlays_stack.getById('advhostgrid-column-edit-overlay');
 		this.#dialogue = this.#overlay.$dialogue[0];
 		this.#form = document.getElementById(form_id);
 
-		const inputs = this.#form.querySelectorAll('[name="data"], [name="display"]');
+		const inputs = this.#form.querySelectorAll('[name="data"], [name="display"], [name="display_value_as"], [name="apply_to_node"], [name="prepend_item"]');
 
 		for (const input of inputs) {
 			input.addEventListener('change', () => this.#updateForm());
@@ -60,6 +60,32 @@ window.advhostgrid_column_edit_form = new class {
 			.on('afteradd.dynamicRows', () => this.#updateForm())
 			.on('afterremove.dynamicRows', () => this.#updateForm());
 
+		const highlights_table = document.getElementById('highlights_table');
+
+		// Initialize highlights table.
+		$(highlights_table)
+			.dynamicRows({
+				rows: highlights,
+				template: '#highlights-row-tmpl',
+				allow_empty: true,
+				dataCallback: row_data => {
+					if (!('color' in row_data)) {
+						const color_pickers = this.#form.querySelectorAll(`.${ZBX_STYLE_COLOR_PICKER}`);
+						const used_colors = [];
+
+						for (const color_picker of color_pickers) {
+							if (color_picker.color !== '') {
+								used_colors.push(color_picker.color);
+							}
+						}
+
+						row_data.color = colorPalette.getNextColor(used_colors);
+					}
+				}
+			})
+			.on('afteradd.dynamicRows', () => this.#updateForm())
+			.on('afterremove.dynamicRows', () => this.#updateForm());
+
 		// Initialize form elements.
 		this.#updateForm();
 
@@ -73,17 +99,32 @@ window.advhostgrid_column_edit_form = new class {
 		const data_type_item_value = data_type == <?= Widget::DATA_ITEM_VALUE ?>;
 		const data_type_text = data_type == <?= Widget::DATA_TEXT ?>;
 
+		const display_value_as = this.#form.querySelector('[name="display_value_as"]:checked')?.value
+			?? '0';
+		const display_value_as_numeric = display_value_as == 0;
+
 		const display = this.#form.querySelector('[name="display"]:checked')?.value
 			?? '<?= Widget::DISPLAY_AS_IS ?>';
+		const display_as_is = display == <?= Widget::DISPLAY_AS_IS ?>;
 		const display_bar = display == <?= Widget::DISPLAY_BAR ?>;
 		const display_indicators = display == <?= Widget::DISPLAY_INDICATORS ?>;
 
 		// Item pattern.
+		const prepend_item = this.#form.querySelector('[name="prepend_item"]').checked;
 		for (const element of this.#form.querySelectorAll('.js-item-row')) {
 			element.style.display = data_type_item_value ? '' : 'none';
 
 			for (const input of element.querySelectorAll('input')) {
 				input.disabled = !data_type_item_value;
+			}
+		}
+
+		// Prepend substring bounding
+		for (const element of this.#form.querySelectorAll('.js-prepend-ext-row')) {
+			element.style.display = data_type_item_value && prepend_item ? '' : 'none';
+
+			for (const input of element.querySelectorAll('input')) {
+				input.disabled = !(data_type_item_value && prepend_item);
 			}
 		}
 
@@ -98,15 +139,15 @@ window.advhostgrid_column_edit_form = new class {
 
 		// Display.
 		for (const element of this.#form.querySelectorAll('.js-display-row')) {
-			element.style.display = data_type_item_value ? '' : 'none';
+			element.style.display = data_type_item_value && display_value_as_numeric ? '' : 'none';
 
 			for (const input of element.querySelectorAll('input')) {
-				input.disabled = !data_type_item_value;
+				input.disabled = !data_type_item_value || !display_value_as_numeric;
 			}
 		}
 
 		// Min/Max.
-		const show_min_max = data_type_item_value && (display_bar || display_indicators);
+		const show_min_max = data_type_item_value && display_value_as_numeric && (display_bar || display_indicators);
 
 		for (const element of this.#form.querySelectorAll('.js-min-max-row')) {
 			element.style.display = show_min_max ? '' : 'none';
@@ -116,12 +157,40 @@ window.advhostgrid_column_edit_form = new class {
 			}
 		}
 
-		// Thresholds.
-		for (const element of this.#form.querySelectorAll('.js-thresholds-row')) {
+		// Numeric-only features (Thresholds, Decimal places, etc.)
+		for (const element of this.#form.querySelectorAll('.js-numeric-row, .js-thresholds-row')) {
+			element.style.display = data_type_item_value && display_value_as_numeric ? '' : 'none';
+
+			for (const input of element.querySelectorAll('input')) {
+				input.disabled = !data_type_item_value || !display_value_as_numeric;
+			}
+		}
+
+		// Highlights.
+		for (const element of this.#form.querySelectorAll('.js-highlights-row')) {
+			element.style.display = data_type_item_value && !display_value_as_numeric ? '' : 'none';
+
+			for (const input of element.querySelectorAll('input')) {
+				input.disabled = !data_type_item_value || display_value_as_numeric;
+			}
+		}
+
+		// Apply to node (Parent Status)
+		const apply_to_node = this.#form.querySelector('[name="apply_to_node"]').checked;
+		for (const element of this.#form.querySelectorAll('.js-apply-node-row')) {
 			element.style.display = data_type_item_value ? '' : 'none';
 
 			for (const input of element.querySelectorAll('input')) {
 				input.disabled = !data_type_item_value;
+			}
+		}
+
+		// Parent Status Priority
+		for (const element of this.#form.querySelectorAll('.js-parent-priority-row')) {
+			element.style.display = data_type_item_value && apply_to_node ? '' : 'none';
+
+			for (const select of element.querySelectorAll('select')) {
+				select.disabled = !(data_type_item_value && apply_to_node);
 			}
 		}
 	}

@@ -26,7 +26,9 @@ class CWidgetFieldGrouping extends CWidgetField {
 					Widget::GROUP_BY_HOST_GROUP,
 					Widget::GROUP_BY_SEVERITY,
 					Widget::GROUP_BY_HOST_INVENTORY,
-					Widget::GROUP_BY_ITEM_VALUE
+					Widget::GROUP_BY_ITEM_VALUE,
+					Widget::GROUP_BY_HOST_NAME,
+					Widget::GROUP_BY_ITEM_NAME
 				])],
 				'tag_name'        => ['type' => API_STRING_UTF8, 'length' => $this->getMaxLength()],
 				'inventory_field' => ['type' => API_STRING_UTF8, 'length' => 64],

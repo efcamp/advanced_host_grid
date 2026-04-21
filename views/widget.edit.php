@@ -69,6 +69,16 @@ if (array_key_exists('filter_logic', $data['fields'])) {
 			? new CWidgetFieldCheckBoxView($data['fields']['show_host_count'])
 			: null
 	)
+	->addField(
+		array_key_exists('show_all_matches', $data['fields'])
+			? new CWidgetFieldCheckBoxView($data['fields']['show_all_matches'])
+			: null
+	)
+	->addField(
+		array_key_exists('expand_depth', $data['fields'])
+			? new CWidgetFieldIntegerBoxView($data['fields']['expand_depth'])
+			: null
+	)
 	->addItem([
 		array_key_exists('maintenance_override', $data['fields'])
 			? (new CLabel($data['fields']['maintenance_override']->getLabel(), $data['fields']['maintenance_override']->getName()))

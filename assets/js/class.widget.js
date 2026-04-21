@@ -33,6 +33,7 @@ class WidgetAdvancedHostGrid extends CWidget {
 		this._grouped_data = response.grouped_data || [];
 		this._host_count = response.host_count || 0;
 		this._show_host_count = response.show_host_count || false;
+		this._expand_depth = response.expand_depth !== undefined ? parseInt(response.expand_depth) : 1;
 		this._grouping_color_full = response.grouping_color_full || false;
 
 		super.setContents(response);
@@ -115,6 +116,51 @@ class WidgetAdvancedHostGrid extends CWidget {
 		wrapper.appendChild(table);
 
 		this._container.appendChild(wrapper);
+
+		// Synchronize label widths for perfect gauge alignment.
+		requestAnimationFrame(() => {
+			this._syncLabelWidths();
+		});
+	}
+
+	_syncLabelWidths() {
+		const labels = Array.from(this._container.querySelectorAll('.ahg-gauge-prepend-label'));
+		if (labels.length === 0) return;
+
+		const columns = {};
+		labels.forEach(label => {
+			const cell = label.closest('.ahg-cell');
+			if (!cell) return;
+			const index = Array.from(cell.parentNode.children).indexOf(cell);
+			if (!columns[index]) columns[index] = [];
+			columns[index].push(label);
+		});
+
+		Object.values(columns).forEach(colLabels => {
+			let maxWidth = 60; // 60px minimum width for short labels
+			
+			colLabels.forEach(label => {
+				// Measure natural width without constraints
+				label.style.width = 'max-content';
+				label.style.minWidth = '0';
+				label.style.maxWidth = 'none';
+				const width = label.getBoundingClientRect().width;
+				if (width > maxWidth) {
+					maxWidth = width;
+				}
+			});
+			
+			// Limit to a reasonable max to prevent a ridiculous name from breaking the UI
+			maxWidth = Math.min(maxWidth, 400);
+			const finalWidth = Math.ceil(maxWidth) + 'px';
+			
+			// Apply exact width to all labels in this column
+			colLabels.forEach(label => {
+				label.style.width = finalWidth;
+				label.style.minWidth = finalWidth;
+				label.style.maxWidth = finalWidth;
+			});
+		});
 	}
 
 	_renderGroupedNodes(tbody, nodes, level, columnDefs, inheritedColor = '', parentGroupId = '') {
@@ -134,7 +180,10 @@ class WidgetAdvancedHostGrid extends CWidget {
 			const cleanLabel = String(node.label).replace(/[^a-zA-Z0-9]/g, '_');
 			const groupId = parentPrefix + level + '_' + nodeIndex + '_' + cleanLabel;
 			
-			// Start collapsed by default (Solarwinds tree style)
+			// Initial expansion state based on depth
+			if (!(groupId in this._expanded)) {
+				this._expanded[groupId] = (level < this._expand_depth);
+			}
 			const isExpanded = this._expanded[groupId] === true;
 
 			// Determine effective color: node's own color overrides inherited.
@@ -150,12 +199,15 @@ class WidgetAdvancedHostGrid extends CWidget {
 			const tdExpand = document.createElement('td');
 			tdExpand.className = 'ahg-group-toggle';
 			tdExpand.colSpan = columnDefs.length;
-			tdExpand.style.paddingLeft = (level * 16 + 8) + 'px';
+			tdExpand.style.paddingLeft = (level * 20 + 10) + 'px';
 
 			const toggleIcon = document.createElement('span');
 			toggleIcon.className = 'ahg-status-circle';
-			if (mappingColor) {
-				toggleIcon.style.backgroundColor = mappingColor;
+			
+			// Priority: Bubbled-up row color (Parent Status) > Dynamic grouping color
+			const finalIconColor = node.row_color ? '#' + node.row_color : mappingColor;
+			if (finalIconColor) {
+				toggleIcon.style.backgroundColor = finalIconColor;
 			}
 
 			const labelSpan = document.createElement('span');
@@ -163,8 +215,9 @@ class WidgetAdvancedHostGrid extends CWidget {
 			labelSpan.textContent = node.label;
 			labelSpan.style.marginLeft = '4px';
 
-			if (mappingColor && this._grouping_color_full) {
-				labelSpan.style.color = mappingColor;
+			if (finalIconColor && this._grouping_color_full) {
+				labelSpan.style.color = finalIconColor;
+				if (node.row_color) labelSpan.style.fontWeight = '600';
 			}
 
 			tdExpand.appendChild(toggleIcon);
@@ -203,23 +256,28 @@ class WidgetAdvancedHostGrid extends CWidget {
 		});
 	}
 
-	_renderHostRow(tbody, host, indentLevel, columnDefs, groupColor = '') {
+	_renderHostRow(tbody, host, level, columnDefs, inheritedColor = '') {
 		const tr = document.createElement('tr');
-		tr.className = 'ahg-host-row';
-
-		const hostColumns = host.columns || {};
+		tr.className = 'ahg-host-row js-menu-host';
+		tr.dataset.hostid = host.hostid;
+		if (host.menu_popup) {
+			tr.setAttribute('data-menu-popup', JSON.stringify(host.menu_popup));
+		}
+		
+		const hostColumns = host.columns || [];
 		columnDefs.forEach((col, colIndex) => {
 			const td = document.createElement('td');
 			td.className = 'ahg-cell ahg-host-cell';
 
-			const cellData = host.columns[colIndex] || {};
+			const cellData = hostColumns[colIndex] || {};
 			const rawValue = cellData ? cellData.raw_value : '';
 			const displayValue = cellData ? (cellData.value !== undefined ? cellData.value : rawValue) : '';
 
 			// Apply threshold coloring.
-			const color = this._getThresholdColor(col, rawValue, cellData?.is_numeric);
+			const color = cellData.threshold_color || this._getThresholdColor(col, rawValue, cellData?.is_numeric);
+			const isGauge = [1, 2].includes(parseInt(col.display));
 
-			if (color) {
+			if (color && !isGauge) {
 				td.style.backgroundColor = '#' + color;
 				td.classList.add('ahg-threshold-colored');
 
@@ -230,43 +288,35 @@ class WidgetAdvancedHostGrid extends CWidget {
 
 			if (colIndex === 0) {
 				const container = document.createElement('div');
-				container.style.display = 'flex';
-				container.style.alignItems = 'center';
-				container.style.gap = '8px';
+				container.className = 'ahg-indent-wrapper';
+
+				// Apply padding for indentation.
+				container.style.paddingLeft = (level * 20 + 8) + 'px';
 
 				// Add status circle matching parent group.
 				const circle = document.createElement('span');
 				circle.className = 'ahg-status-circle';
-				if (groupColor) {
-					circle.style.backgroundColor = '#' + groupColor;
+				if (inheritedColor) {
+					circle.style.backgroundColor = '#' + inheritedColor;
 				}
+				circle.style.marginRight = '4px';
 				container.appendChild(circle);
 				
-				// Calculate indent to match parent group exactly (parent_level * 16 + 8)
-				// Note: indentLevel passed here is already level + 1
-				// Indent 16px deeper than parent group label
-				td.style.paddingLeft = (indentLevel * 16 + 8) + 'px';
-
 				// Data type 0 is HOST_NAME
-				if (col.data === 0) {
+				if (parseInt(col.data) === 0) {
 					const hostInfo = document.createElement('div');
 					hostInfo.style.display = 'flex';
 					hostInfo.style.alignItems = 'center';
 					hostInfo.style.gap = '2px';
 
 					const a = document.createElement('a');
-					a.className = 'js-menu-host link-action ahg-host-link';
+					a.className = 'ahg-host-link';
 					a.setAttribute('data-hostid', host.hostid);
 					a.href = 'javascript:void(0);';
 					a.textContent = displayValue;
 					
-					if (cellData.menu_popup) {
-						a.setAttribute('data-menu-popup', JSON.stringify(cellData.menu_popup));
-					}
-					
 					hostInfo.appendChild(a);
 
-					// Inject native maintenance icon HTML to the RIGHT if applicable.
 					if (cellData.maintenance_icon_html) {
 						const iconContainer = document.createElement('span');
 						iconContainer.innerHTML = cellData.maintenance_icon_html;
@@ -275,23 +325,50 @@ class WidgetAdvancedHostGrid extends CWidget {
 					
 					container.appendChild(hostInfo);
 				} else {
-					const span = document.createElement('span');
-					span.textContent = displayValue;
-					container.appendChild(span);
+					// Check for Bar/Indicator displays even in Column 0
+					switch (parseInt(col.display)) {
+						case 1: // Bar
+							this._renderNativeGauge(container, cellData, col, true);
+							break;
+						case 2: // Indicator
+							this._renderNativeGauge(container, cellData, col, true);
+							break;
+						default: {
+							const span = document.createElement('span');
+							let text = displayValue;
+							const actualName = cellData.item_name || col.item || '';
+							if (parseInt(col.prepend_item) === 1 && actualName) {
+								text = actualName + ': ' + text;
+							}
+							span.textContent = text;
+							container.appendChild(span);
+							break;
+						}
+					}
 				}
 				td.appendChild(container);
 			} else {
-				switch (col.display) {
-					case WidgetAdvancedHostGrid.DISPLAY_BAR:
-						this._renderBar(td, rawValue, col, displayValue);
+				switch (parseInt(col.display)) {
+					case 1: // Bar
+						this._renderNativeGauge(td, cellData, col);
 						break;
 
-					case WidgetAdvancedHostGrid.DISPLAY_INDICATORS:
-						this._renderIndicator(td, rawValue, col, displayValue);
+					case 2: // Indicator
+						this._renderNativeGauge(td, cellData, col);
 						break;
 
 					default:
-						td.textContent = displayValue;
+						const valSpan = document.createElement('span');
+						valSpan.className = 'ahg-value-span';
+						valSpan.style.padding = '0 8px';
+						
+						let text = displayValue;
+						const actualName = cellData.item_name || col.item || '';
+						if (parseInt(col.prepend_item) === 1 && actualName) {
+							text = actualName + ': ' + text;
+						}
+						valSpan.textContent = text;
+						td.appendChild(valSpan);
 						break;
 				}
 			}
@@ -302,51 +379,73 @@ class WidgetAdvancedHostGrid extends CWidget {
 		tbody.appendChild(tr);
 	}
 
-	_renderBar(td, rawValue, col, displayValue) {
-		const min = parseFloat(col.min) || 0;
-		const max = parseFloat(col.max) || 100;
-		const value = parseFloat(rawValue) || 0;
-		const percent = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+	/**
+	 * Render a native CBarGauge received from PHP.
+	 * Layout: [Prepended Name] [Gauge Container] [Value]
+	 */
+	_renderNativeGauge(container, cellData, col, inColumnZero = false) {
+		const wrapper = document.createElement('div');
+		wrapper.className = 'ahg-native-gauge-wrapper';
+		wrapper.style.display = 'flex';
+		wrapper.style.alignItems = 'center';
+		wrapper.style.justifyContent = 'space-between';
+		wrapper.style.width = '100%';
+		wrapper.style.gap = '2px'; // Reduced to ~30%
+		wrapper.style.padding = inColumnZero ? '0' : '0 2px'; // Reduced to ~30%
 
-		const barContainer = document.createElement('div');
-		barContainer.className = 'ahg-bar-container';
-
-		const barFill = document.createElement('div');
-		barFill.className = 'ahg-bar-fill';
-		barFill.style.width = percent + '%';
-
-		const color = this._getThresholdColor(col, rawValue, true);
-		if (color) {
-			barFill.style.backgroundColor = '#' + color;
+		// 1. Prepended Host/Item name
+		const actualName = cellData.item_name || col.item || '';
+		if (parseInt(col.prepend_item) === 1 && actualName) {
+			const label = document.createElement('div');
+			label.className = 'ahg-gauge-prepend-label';
+			label.textContent = actualName + ':';
+			label.title = actualName; 
+			label.style.flex = '0 0 auto'; 
+			label.style.overflow = 'hidden';
+			label.style.textOverflow = 'ellipsis';
+			label.style.whiteSpace = 'nowrap';
+			label.style.marginRight = '2px'; // Reduced to ~30%
+			wrapper.appendChild(label);
 		}
 
-		const barLabel = document.createElement('span');
-		barLabel.className = 'ahg-bar-label';
-		barLabel.textContent = displayValue;
+		// 2. The Gauge itself
+		const gaugeContainer = document.createElement('div');
+		gaugeContainer.className = 'ahg-gauge-visual-container';
+		gaugeContainer.style.flex = '1 1 auto'; // Allow it to claim all remaining space
+		gaugeContainer.style.minWidth = '60px';  // ENFORCE minimum width (60px Floor)
+		// Removed overflow: hidden to prevent clipping the right stroke of the Canvas
+		gaugeContainer.innerHTML = cellData.gauge_html || '';
+		wrapper.appendChild(gaugeContainer);
 
-		barContainer.appendChild(barFill);
-		barContainer.appendChild(barLabel);
-		td.appendChild(barContainer);
-	}
-
-	_renderIndicator(td, rawValue, col, displayValue) {
-		const dot = document.createElement('span');
-		dot.className = 'ahg-indicator-dot';
-
-		const color = this._getThresholdColor(col, rawValue, true);
-		if (color) {
-			dot.style.backgroundColor = '#' + color;
+		// Manually trigger gauge component update if needed (Zabbix 7.4 sync)
+		const gaugeEl = gaugeContainer.querySelector('z-bar-gauge');
+		if (gaugeEl) {
+			// Web components in Zabbix sometimes need a property nudge after innerHTML injection
+			if (cellData.raw_value !== undefined) {
+				gaugeEl.value = cellData.raw_value;
+			}
+			
+			// Force the internal refresh if the component is already upgraded
+			if (typeof gaugeEl._refresh === 'function') {
+				gaugeEl._refresh();
+			} else {
+				// Fallback: trigger a resize event to nudge the ResizeObserver
+				window.dispatchEvent(new Event('resize'));
+			}
 		}
-		else {
-			dot.style.backgroundColor = col.base_color ? '#' + col.base_color : '#6D6D6D';
-		}
 
-		const label = document.createElement('span');
-		label.className = 'ahg-indicator-label';
-		label.textContent = displayValue;
+		// 3. The Value string
+		const valueLabel = document.createElement('div');
+		valueLabel.className = 'ahg-gauge-value-label';
+		valueLabel.textContent = cellData.value !== undefined ? cellData.value : (cellData.raw_value || '');
+		valueLabel.style.whiteSpace = 'nowrap';
+		valueLabel.style.minWidth = '40px';
+		valueLabel.style.textAlign = 'right';
+		valueLabel.style.flex = '0 0 auto'; // Prevent gauge overlap
+		valueLabel.style.marginLeft = 'auto'; // Force to right
+		wrapper.appendChild(valueLabel);
 
-		td.appendChild(dot);
-		td.appendChild(label);
+		container.appendChild(wrapper);
 	}
 
 	_getThresholdColor(col, rawValue, isNumeric) {

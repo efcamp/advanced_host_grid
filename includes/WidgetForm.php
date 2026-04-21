@@ -57,17 +57,21 @@ class WidgetForm extends CWidgetForm {
 
 		// Apply sortable changes to data.
 		if (array_key_exists('sortorder', $values)) {
-			if (array_key_exists('column', $values) && (int)$values['column'] < 100 && array_key_exists('columns', $values['sortorder'])) {
-				$values['column'] = (int) array_search($values['column'], $values['sortorder']['columns'], true);
+			if (array_key_exists('column', $values) && array_key_exists('columns', $values['sortorder'])) {
+				$new_column = array_search($values['column'], $values['sortorder']['columns'], true);
+				if ($new_column !== false) {
+					$values['column'] = $new_column;
+				}
 			}
 
-			// Also update global filters column references if they were swapped.
 			for ($i = 1; $i <= 3; $i++) {
-				$f_col = $values['filter'.$i.'_column'] ?? '';
-				if ($f_col !== '' && (int)$f_col < 100 && array_key_exists('columns', $values['sortorder'])) {
-					$new_idx = array_search((string)$f_col, $values['sortorder']['columns'], true);
-					if ($new_idx !== false) {
-						$values['filter'.$i.'_column'] = (string)$new_idx;
+				if (array_key_exists('filter'.$i.'_column', $values) && array_key_exists('columns', $values['sortorder'])) {
+					$target = $values['filter'.$i.'_column'];
+					if (is_numeric($target) && (int)$target < 100) {
+						$new_target = array_search($target, $values['sortorder']['columns'], true);
+						if ($new_target !== false) {
+							$values['filter'.$i.'_column'] = $new_target;
+						}
 					}
 				}
 			}
@@ -91,22 +95,23 @@ class WidgetForm extends CWidgetForm {
 		if (array_key_exists('columns', $values)) {
 			foreach ($values['columns'] as $key => $value) {
 				$value['name'] = trim($value['name'] ?? '');
+				$col_id = (int)$key;
 
 				switch ($value['data']) {
 					case Widget::DATA_ITEM_VALUE:
-						$this->field_column_values[$key] = $value['name'] === ''
+						$this->field_column_values[$col_id] = $value['name'] === ''
 							? ($value['item'] ?? '')
 							: $value['name'];
 						break;
 
 					case Widget::DATA_HOST_NAME:
-						$this->field_column_values[$key] = $value['name'] === ''
+						$this->field_column_values[$col_id] = $value['name'] === ''
 							? _('Host name')
 							: $value['name'];
 						break;
 
 					case Widget::DATA_TEXT:
-						$this->field_column_values[$key] = $value['name'] === ''
+						$this->field_column_values[$col_id] = $value['name'] === ''
 							? ($value['text'] ?? '')
 							: $value['name'];
 						break;
@@ -140,6 +145,14 @@ class WidgetForm extends CWidgetForm {
 			)
 			->addField(
 				(new CWidgetFieldCheckBox('show_host_count', _('Show total host count')))
+					->setDefault(0)
+			)
+			->addField(
+				(new CWidgetFieldCheckBox('show_all_matches', _('Expand item patterns')))
+					->setDefault(0)
+			)
+			->addField(
+				(new CWidgetFieldIntegerBox('expand_depth', _('Expand tree depth'), 0, 10))
 					->setDefault(0)
 			)
 			->addField(

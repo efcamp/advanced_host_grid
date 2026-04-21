@@ -25,6 +25,16 @@ class ColumnEdit extends CController {
 			'min'             => 'string',
 			'max'             => 'string',
 			'thresholds'      => 'array',
+			'display_value_as' => 'int32',
+			'prepend_item'    => 'in 0,1',
+			'prepend_item_begin' => 'string',
+			'prepend_item_end' => 'string',
+			'apply_to_node'   => 'in 0,1',
+			'parent_status_priority' => 'in 0,1',
+			'decimal_places'  => 'int32',
+			'columnid'        => 'string',
+			'thresholds'      => 'array',
+			'highlights'      => 'array',
 			'edit'            => 'in 1',
 			'update'          => 'in 1'
 		];
@@ -120,7 +130,16 @@ class ColumnEdit extends CController {
 				'display'         => Widget::DISPLAY_AS_IS,
 				'min'             => '',
 				'max'             => '',
-				'thresholds'      => []
+				'prepend_item'    => 0,
+				'prepend_item_begin' => '',
+				'prepend_item_end' => '',
+				'apply_to_node'   => 0,
+				'parent_status_priority' => 0,
+				'decimal_places'  => 2,
+				'display_value_as' => 0,
+				'columnid'        => '',
+				'thresholds'      => [],
+				'highlights'      => []
 			];
 		}
 

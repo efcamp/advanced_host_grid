@@ -12,6 +12,8 @@ class Widget extends CWidget {
 	public const GROUP_BY_SEVERITY = 2;
 	public const GROUP_BY_HOST_INVENTORY = 3;
 	public const GROUP_BY_ITEM_VALUE = 4;
+	public const GROUP_BY_HOST_NAME = 5;
+	public const GROUP_BY_ITEM_NAME = 6;
 
 	// Column data types.
 	public const DATA_HOST_NAME = 0;
