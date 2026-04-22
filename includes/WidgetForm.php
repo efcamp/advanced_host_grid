@@ -152,6 +152,32 @@ class WidgetForm extends CWidgetForm {
 					->setDefault(0)
 			)
 			->addField(
+				(new CWidgetFieldCheckBox('honeycomb_view', _('Honeycomb view')))
+					->setDefault(0)
+			)
+			->addField(
+				(new CWidgetFieldRadioButtonList('honeycomb_shape', _('Shape'), [
+					0 => _('Hexagon'),
+					1 => _('Square')
+				]))->setDefault(0)
+			)
+			->addField(
+				(new CWidgetFieldSelect('honeycomb_primary_label', _('Primary label'), [
+					-1 => _('None'),
+					0 => _('Host name'),
+					1 => _('Item name'),
+					2 => _('Item value')
+				]))->setDefault(2)
+			)
+			->addField(
+				(new CWidgetFieldSelect('honeycomb_secondary_label', _('Secondary label'), [
+					-1 => _('None'),
+					0 => _('Host name'),
+					1 => _('Item name'),
+					2 => _('Item value')
+				]))->setDefault(0)
+			)
+			->addField(
 				(new CWidgetFieldIntegerBox('expand_depth', _('Expand tree depth'), 0, 10))
 					->setDefault(0)
 			)

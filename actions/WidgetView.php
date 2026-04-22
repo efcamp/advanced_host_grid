@@ -24,6 +24,15 @@ class WidgetView extends CControllerDashboardWidgetView {
 		$show_all_matches = (bool)($this->fields_values['show_all_matches'] ?? false);
 		$expand_depth = (int)($this->fields_values['expand_depth'] ?? 1);
 		$grouping_color_full = (bool)($this->fields_values['grouping_color_full'] ?? false);
+
+		$honeycomb_view = (bool)($this->fields_values['honeycomb_view'] ?? false);
+		$honeycomb_shape = (int)($this->fields_values['honeycomb_shape'] ?? 0);
+		$honeycomb_primary_label = (int)($this->fields_values['honeycomb_primary_label'] ?? 2);
+		$honeycomb_secondary_label = (int)($this->fields_values['honeycomb_secondary_label'] ?? 0);
+
+		if ($honeycomb_view) {
+			$show_all_matches = true;
+		}
 		
 		// Maintenance override settings
 		$maintenance_override = (bool)($this->fields_values['maintenance_override'] ?? false);
@@ -175,6 +184,11 @@ class WidgetView extends CControllerDashboardWidgetView {
 							} else {
 								// Store in a global "matches for this host" list for explosion
 								$items_by_host_all[$hostid][$item['itemid']] = $cell_data + ['pattern' => $pattern];
+								
+								// Critical: retain the first matched value inside the pattern dictionary so Grouping doesn't fail
+								if (!isset($host_item_values[$hostid][$pattern])) {
+									$host_item_values[$hostid][$pattern] = $cell_data;
+								}
 							}
 						}
 					}
@@ -221,6 +235,9 @@ class WidgetView extends CControllerDashboardWidgetView {
 				foreach ($items_by_host_all[$hostid] as $itemid => $item_info) {
 					$row = $base_row;
 					$row['exploded_item_name'] = $item_info['item_name'];
+					$row['exploded_item_pattern'] = $item_info['pattern'];
+					$row['exploded_item_val'] = $item_info['value'];
+					$row['exploded_item_raw'] = $item_info['raw_value'];
 					$row['columns'] = [];
 					$row['bubble_up_colors'] = [];
 
@@ -511,6 +528,10 @@ class WidgetView extends CControllerDashboardWidgetView {
 			'show_host_count' => $show_host_count,
 			'expand_depth' => $expand_depth,
 			'grouping_color_full' => $grouping_color_full,
+			'honeycomb_view' => $honeycomb_view,
+			'honeycomb_shape' => $honeycomb_shape,
+			'honeycomb_primary_label' => $honeycomb_primary_label,
+			'honeycomb_secondary_label' => $honeycomb_secondary_label,
 			'user' => ['debug_mode' => $this->getDebugMode()]
 		]));
 	}
@@ -799,7 +820,12 @@ class WidgetView extends CControllerDashboardWidgetView {
 				break;
 			case Widget::GROUP_BY_ITEM_VALUE:
 				$pattern = (string)($group_row['item_pattern'] ?? '');
-				if (isset($host_item_values[$row['hostid']][$pattern])) {
+				
+				if (isset($row['exploded_item_pattern']) && $row['exploded_item_pattern'] === $pattern) {
+					$raw = (string)$row['exploded_item_raw'];
+					$value = (string)$row['exploded_item_val'];
+				}
+				elseif (isset($host_item_values[$row['hostid']][$pattern])) {
 					$v = $host_item_values[$row['hostid']][$pattern];
 					$raw = (string)$v['raw_value'];
 					$value = (string)$v['value'];

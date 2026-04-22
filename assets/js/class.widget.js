@@ -35,6 +35,10 @@ class WidgetAdvancedHostGrid extends CWidget {
 		this._show_host_count = response.show_host_count || false;
 		this._expand_depth = response.expand_depth !== undefined ? parseInt(response.expand_depth) : 1;
 		this._grouping_color_full = response.grouping_color_full || false;
+		this._honeycomb_view = response.honeycomb_view || false;
+		this._honeycomb_shape = response.honeycomb_shape || 0;
+		this._honeycomb_primary_label = response.honeycomb_primary_label !== undefined ? response.honeycomb_primary_label : 2;
+		this._honeycomb_secondary_label = response.honeycomb_secondary_label !== undefined ? response.honeycomb_secondary_label : 0;
 
 		super.setContents(response);
 
@@ -92,7 +96,9 @@ class WidgetAdvancedHostGrid extends CWidget {
 		});
 
 		thead.appendChild(headerRow);
-		table.appendChild(thead);
+		if (!this._honeycomb_view) {
+			table.appendChild(thead);
+		}
 
 		// Body.
 		const tbody = document.createElement('tbody');
@@ -103,9 +109,13 @@ class WidgetAdvancedHostGrid extends CWidget {
 		else if (this._grouped_data.length > 0) {
 			// No grouping — render flat.
 			const flatHosts = this._grouped_data[0]?.hosts || [];
-			flatHosts.forEach(host => {
-				this._renderHostRow(tbody, host, 0, columnDefs);
-			});
+			if (this._honeycomb_view) {
+				this._renderHoneycombWrapper(tbody, flatHosts, 0, columnDefs);
+			} else {
+				flatHosts.forEach(host => {
+					this._renderHostRow(tbody, host, 0, columnDefs);
+				});
+			}
 		}
 
 		table.appendChild(tbody);
@@ -163,15 +173,19 @@ class WidgetAdvancedHostGrid extends CWidget {
 		});
 	}
 
-	_renderGroupedNodes(tbody, nodes, level, columnDefs, inheritedColor = '', parentGroupId = '') {
+	_renderGroupedNodes(tbody, nodes, level, columnDefs, inheritedColor = '', parentGroupId = '', manualOverrideColor = '') {
 		nodes.forEach((node, nodeIndex) => {
 			if (node.label === undefined || node.label === null) return;
 			if (node.label === '') {
 				// Skip empty label nodes (flat mode from controller).
 				if (node.hosts) {
-					node.hosts.forEach(host => {
-						this._renderHostRow(tbody, host, level, columnDefs, inheritedColor);
-					});
+					if (this._honeycomb_view) {
+						this._renderHoneycombWrapper(tbody, node.hosts, level, columnDefs);
+					} else {
+						node.hosts.forEach(host => {
+							this._renderHostRow(tbody, host, level, columnDefs, inheritedColor);
+						});
+					}
 				}
 				return;
 			}
@@ -189,6 +203,8 @@ class WidgetAdvancedHostGrid extends CWidget {
 			// Determine effective color: node's own color overrides inherited.
 			const nodeColor = node.color || '';
 			const effectiveColor = nodeColor || inheritedColor;
+			const finalInheritedColor = node.row_color || effectiveColor;
+			const activeManualColor = nodeColor || manualOverrideColor;
 			const mappingColor = effectiveColor ? '#' + effectiveColor : '';
 
 			// Group header row.
@@ -231,7 +247,18 @@ class WidgetAdvancedHostGrid extends CWidget {
 				const scrollWrapper = this._container.querySelector('.ahg-scroll-wrapper');
 				const currentScroll = scrollWrapper ? scrollWrapper.scrollTop : 0;
 
-				this._expanded[groupId] = !isExpanded;
+				const willBeExpanded = !isExpanded;
+				this._expanded[groupId] = willBeExpanded;
+
+				// If collapsing, recursively collapse all descendant groups so they are closed upon reopening
+				if (!willBeExpanded) {
+					Object.keys(this._expanded).forEach(key => {
+						if (key.startsWith(groupId + '_')) {
+							this._expanded[key] = false;
+						}
+					});
+				}
+
 				this._container.innerHTML = '';
 				this._render();
 
@@ -245,18 +272,22 @@ class WidgetAdvancedHostGrid extends CWidget {
 
 			// Render children or hosts.
 			if (node.children && node.children.length > 0) {
-				this._renderGroupedNodes(tbody, node.children, level + 1, columnDefs, effectiveColor, groupId);
+				this._renderGroupedNodes(tbody, node.children, level + 1, columnDefs, finalInheritedColor, groupId, activeManualColor);
 			}
 
 			if (node.hosts && node.hosts.length > 0) {
-				node.hosts.forEach(host => {
-					this._renderHostRow(tbody, host, level + 1, columnDefs, effectiveColor);
-				});
+				if (this._honeycomb_view) {
+					this._renderHoneycombWrapper(tbody, node.hosts, level + 1, columnDefs);
+				} else {
+					node.hosts.forEach(host => {
+						this._renderHostRow(tbody, host, level + 1, columnDefs, finalInheritedColor, activeManualColor);
+					});
+				}
 			}
 		});
 	}
 
-	_renderHostRow(tbody, host, level, columnDefs, inheritedColor = '') {
+	_renderHostRow(tbody, host, level, columnDefs, inheritedColor = '', manualOverrideColor = '') {
 		const tr = document.createElement('tr');
 		tr.className = 'ahg-host-row js-menu-host';
 		tr.dataset.hostid = host.hostid;
@@ -293,11 +324,23 @@ class WidgetAdvancedHostGrid extends CWidget {
 				// Apply padding for indentation.
 				container.style.paddingLeft = (level * 20 + 8) + 'px';
 
-				// Add status circle matching parent group.
+				// Add status circle matching row threshold or manual parent group override
 				const circle = document.createElement('span');
 				circle.className = 'ahg-status-circle';
-				if (inheritedColor) {
-					circle.style.backgroundColor = '#' + inheritedColor;
+				
+				let rowNativeColor = '';
+				columnDefs.forEach((col, colIdx) => {
+					const colData = hostColumns[colIdx] || {};
+					const rVal = colData ? colData.raw_value : '';
+					const c = colData.threshold_color || this._getThresholdColor(col, rVal, colData?.is_numeric);
+					if (!rowNativeColor && c) {
+						rowNativeColor = c;
+					}
+				});
+
+				const targetColor = manualOverrideColor || rowNativeColor;
+				if (targetColor) {
+					circle.style.backgroundColor = '#' + targetColor;
 				}
 				circle.style.marginRight = '4px';
 				container.appendChild(circle);
@@ -508,4 +551,109 @@ class WidgetAdvancedHostGrid extends CWidget {
 
 		return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 	}
+
+	_renderHoneycombWrapper(tbody, hosts, level, columnDefs) {
+		if (hosts.length === 0) return;
+
+		const tr = document.createElement('tr');
+		tr.className = 'ahg-honeycomb-row';
+
+		const td = document.createElement('td');
+		td.colSpan = columnDefs.length > 0 ? columnDefs.length : 1;
+		td.style.padding = 0;
+
+		const wrapper = document.createElement('div');
+		wrapper.className = 'ahg-honeycomb-wrapper';
+		wrapper.style.marginLeft = (level * 20 + 8) + 'px';
+
+		hosts.forEach(host => {
+			wrapper.appendChild(this._createHoneycombCell(host, columnDefs));
+		});
+
+		td.appendChild(wrapper);
+		tr.appendChild(td);
+		tbody.appendChild(tr);
+	}
+
+	_createHoneycombCell(host, columnDefs) {
+        let targetColIndex = -1;
+        for (let i = 0; i < columnDefs.length; i++) {
+            if (parseInt(columnDefs[i].data) === 4 || parseInt(columnDefs[i].data) === 1) { 
+                // Only select this column as the source for the honeycomb shape if it actually has data
+                if (host.columns[i] !== undefined && host.columns[i].raw_value !== '') {
+                    targetColIndex = i;
+                    break;
+                }
+            }
+        }
+        if (targetColIndex === -1 && columnDefs.length > 0) {
+            targetColIndex = 0;
+        }
+
+        const cellData = targetColIndex >= 0 ? (host.columns[targetColIndex] || {}) : {};
+        const colDef = targetColIndex >= 0 ? columnDefs[targetColIndex] : null;
+
+        const cell = document.createElement('div');
+        cell.className = 'ahg-honeycomb-cell js-menu-host';
+        if (parseInt(this._honeycomb_shape) === 1) {
+            cell.classList.add('ahg-square-cell');
+        } else {
+            cell.classList.add('ahg-hex-cell');
+        }
+        cell.dataset.hostid = host.hostid;
+        
+        if (host.menu_popup) {
+            cell.setAttribute('data-menu-popup', JSON.stringify(host.menu_popup));
+        }
+
+        let bgColor = '';
+        if (colDef) {
+            const rawValue = cellData ? cellData.raw_value : '';
+            bgColor = cellData.threshold_color || this._getThresholdColor(colDef, rawValue, cellData?.is_numeric) || colDef.base_color;
+        }
+        if (bgColor) {
+            cell.style.backgroundColor = '#' + bgColor;
+            const brightness = this._getColorBrightness(bgColor);
+            cell.style.color = brightness > 128 ? '#1a1a2e' : '#ffffff';
+        }
+
+        const getLabelMarkup = (type) => {
+            switch(parseInt(type)) {
+                case 0: return host.name || '';
+                case 1: return cellData.item_name || (colDef ? colDef.item : '') || '';
+                case 2: return cellData.value !== undefined ? cellData.value : (cellData.raw_value || '');
+                default: return '';
+            }
+        };
+
+        const primaryStr = getLabelMarkup(this._honeycomb_primary_label);
+        const secondaryStr = getLabelMarkup(this._honeycomb_secondary_label);
+
+        if (primaryStr) {
+            const p = document.createElement('div');
+            p.className = 'ahg-hc-primary';
+            p.textContent = primaryStr;
+            cell.appendChild(p);
+        }
+
+        if (secondaryStr) {
+            const s = document.createElement('div');
+            s.className = 'ahg-hc-secondary';
+            s.textContent = secondaryStr;
+            cell.appendChild(s);
+        }
+
+        let tooltipLines = [];
+        if (host.name) tooltipLines.push('Host: ' + host.name);
+        if (cellData.item_name) tooltipLines.push('Item: ' + cellData.item_name);
+        const valStr = cellData.value !== undefined ? cellData.value : cellData.raw_value;
+        if (valStr !== undefined && valStr !== '') tooltipLines.push('Value: ' + valStr);
+        
+        if (tooltipLines.length > 0) {
+            cell.setAttribute('data-hintbox', '1');
+            cell.setAttribute('data-hintbox-contents', tooltipLines.join('<br>'));
+        }
+
+        return cell;
+    }
 }

@@ -402,3 +402,69 @@ z-bar-gauge {
 .form-grid label[for="group_by"] {
 	font-weight: normal;
 }
+
+/* --- Honeycomb Mode Styles --- */
+.ahg-honeycomb-wrapper {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 8px 0;
+	margin-left: 20px; /* Base indent to match tree */
+}
+
+.ahg-honeycomb-cell {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	width: 52px;
+	height: 52px;
+	cursor: pointer;
+	box-sizing: border-box;
+	padding: 4px;
+	transition: filter 0.2s ease, transform 0.2s ease;
+	background-color: var(--zbx-color-bg-base, #333);
+	color: #fff;
+}
+
+.ahg-honeycomb-cell.js-menu-host:hover {
+	filter: brightness(1.25) drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+	transform: scale(1.05);
+	z-index: 10;
+}
+
+.ahg-square-cell {
+	border-radius: 6px;
+}
+
+.ahg-hex-cell {
+	/* Pointy-topped hexagon */
+	clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+	height: 58px; /* Slightly taller to maintain aspect ratio for perfect hexagon */
+	margin-left: -2px;
+	margin-right: -2px;
+	padding-left: 6px;
+	padding-right: 6px;
+}
+
+.ahg-hc-primary {
+	font-weight: 600;
+	font-size: 9px;
+	width: 100%;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ahg-hc-secondary {
+	font-size: 8px;
+	opacity: 0.85;
+	width: 100%;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-top: 2px;
+}
+

@@ -79,6 +79,26 @@ if (array_key_exists('filter_logic', $data['fields'])) {
 			? new CWidgetFieldIntegerBoxView($data['fields']['expand_depth'])
 			: null
 	)
+	->addField(
+		array_key_exists('honeycomb_view', $data['fields'])
+			? new CWidgetFieldCheckBoxView($data['fields']['honeycomb_view'])
+			: null
+	)
+	->addField(
+		array_key_exists('honeycomb_shape', $data['fields'])
+			? new CWidgetFieldRadioButtonListView($data['fields']['honeycomb_shape'])
+			: null
+	)
+	->addField(
+		array_key_exists('honeycomb_primary_label', $data['fields'])
+			? new CWidgetFieldSelectView($data['fields']['honeycomb_primary_label'])
+			: null
+	)
+	->addField(
+		array_key_exists('honeycomb_secondary_label', $data['fields'])
+			? new CWidgetFieldSelectView($data['fields']['honeycomb_secondary_label'])
+			: null
+	)
 	->addItem([
 		array_key_exists('maintenance_override', $data['fields'])
 			? (new CLabel($data['fields']['maintenance_override']->getLabel(), $data['fields']['maintenance_override']->getName()))
