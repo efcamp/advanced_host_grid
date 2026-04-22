@@ -124,6 +124,9 @@ class WidgetView extends CControllerDashboardWidgetView {
 			if ($group_row['attribute'] == Widget::GROUP_BY_ITEM_VALUE && !empty($group_row['item_pattern'])) {
 				$item_patterns[] = $group_row['item_pattern'];
 			}
+			if (isset($group_row['group_order_by']) && $group_row['group_order_by'] == Widget::GROUP_ORDER_BY_ITEM_VALUE && !empty($group_row['group_order_item_pattern'])) {
+				$item_patterns[] = $group_row['group_order_item_pattern'];
+			}
 		}
 		$item_patterns = array_unique($item_patterns);
 
@@ -517,7 +520,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 		}
 
 		// ---- Build results ----
-		$grouped_data = $this->buildGroupedTree($host_rows, count($group_by), 0, $group_mappings, $group_inherits, $explicit_mapping_levels);
+		$grouped_data = $this->buildGroupedTree($host_rows, $group_by, 0, $group_mappings, $group_inherits, $explicit_mapping_levels, $host_item_values);
 
 		$this->setResponse(new CControllerResponseData([
 			'name' => $this->getInput('name', $this->widget->getName()),
@@ -668,7 +671,8 @@ class WidgetView extends CControllerDashboardWidgetView {
 		elseif ($op === 'or') { $b = array_pop($values); $a = array_pop($values); $values[] = ($a || $b); }
 	}
 
-	private function buildGroupedTree(array $hosts, int $total_levels, int $level, array $group_mappings = [], array $group_inherits = [], array $explicit_levels = []): array {
+	private function buildGroupedTree(array $hosts, array $group_by, int $level, array $group_mappings = [], array $group_inherits = [], array $explicit_levels = [], array $host_item_values = []): array {
+		$total_levels = count($group_by);
 		if ($level >= $total_levels) return [['label' => '', 'host_count' => count($hosts), 'hosts' => $hosts, 'children' => []]];
 		
 		$groups = [];
@@ -679,9 +683,70 @@ class WidgetView extends CControllerDashboardWidgetView {
 			$groups[$raw_val][] = $h;
 		}
 
-		uksort($groups, function($a, $b) { 
-			if ($a === Widget::UNKNOWN_GROUP_LABEL) return 1; if ($b === Widget::UNKNOWN_GROUP_LABEL) return -1;
-			return strnatcasecmp($a, $b); 
+		$group_row = $group_by[$level] ?? [];
+		$order_by = (int)($group_row['group_order_by'] ?? Widget::GROUP_ORDER_BY_LABEL);
+		$order_dir = (int)($group_row['group_order'] ?? Widget::GROUP_ORDER_ASC);
+		$order_pattern = (string)($group_row['group_order_item_pattern'] ?? '');
+
+		$group_sort_values = [];
+		foreach ($groups as $raw_value => $group_hosts) {
+			if ($raw_value === Widget::UNKNOWN_GROUP_LABEL) {
+				$group_sort_values[$raw_value] = null;
+				continue;
+			}
+			if ($order_by == Widget::GROUP_ORDER_BY_HOST_COUNT) {
+				$group_sort_values[$raw_value] = count($group_hosts);
+			} elseif ($order_by == Widget::GROUP_ORDER_BY_ITEM_VALUE && $order_pattern !== '') {
+				$val = null;
+				foreach ($group_hosts as $h) {
+					if (isset($host_item_values[$h['hostid']][$order_pattern])) {
+						$v = $host_item_values[$h['hostid']][$order_pattern]['raw_value'];
+						if (is_numeric($v)) {
+							$v = (float)$v;
+						}
+						if ($val === null) {
+							$val = $v;
+						} else {
+							if ($order_dir == Widget::GROUP_ORDER_DESC) {
+								if ($v > $val) $val = $v;
+							} else {
+								if ($v < $val) $val = $v;
+							}
+						}
+					}
+				}
+				$group_sort_values[$raw_value] = $val;
+			} else {
+				$group_sort_values[$raw_value] = $raw_value;
+			}
+		}
+
+		uksort($groups, function($a, $b) use ($group_sort_values, $order_by, $order_dir) {
+			if ($a === Widget::UNKNOWN_GROUP_LABEL) return 1;
+			if ($b === Widget::UNKNOWN_GROUP_LABEL) return -1;
+
+			$val_a = $group_sort_values[$a];
+			$val_b = $group_sort_values[$b];
+
+			if ($order_by == Widget::GROUP_ORDER_BY_LABEL) {
+				$cmp = strnatcasecmp((string)$val_a, (string)$val_b);
+				return ($order_dir == Widget::GROUP_ORDER_DESC) ? -$cmp : $cmp;
+			}
+
+			if ($val_a === null && $val_b === null) {
+				$cmp = strnatcasecmp((string)$a, (string)$b);
+				return ($order_dir == Widget::GROUP_ORDER_DESC) ? -$cmp : $cmp;
+			}
+			if ($val_a === null) return 1;
+			if ($val_b === null) return -1;
+
+			if (is_numeric($val_a) && is_numeric($val_b)) {
+				$cmp = $val_a <=> $val_b;
+			} else {
+				$cmp = strnatcasecmp((string)$val_a, (string)$val_b);
+			}
+
+			return ($order_dir == Widget::GROUP_ORDER_DESC) ? -$cmp : $cmp;
 		});
 
 		$tree = [];
@@ -774,7 +839,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 			}
 
 			if ($level + 1 < $total_levels) {
-				$node['children'] = $this->buildGroupedTree($group_hosts, $total_levels, $level + 1, $group_mappings, $group_inherits, $explicit_levels);
+				$node['children'] = $this->buildGroupedTree($group_hosts, $group_by, $level + 1, $group_mappings, $group_inherits, $explicit_levels, $host_item_values);
 				$node['hosts'] = [];
 			} else {
 				$node['children'] = [];

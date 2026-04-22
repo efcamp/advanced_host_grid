@@ -113,6 +113,19 @@ class AdvancedHostGrid_CWidgetFieldGrouping extends CWidgetField {
 				value_mappings_input.style.display = '';
 				value_mappings_input.disabled = false;
 			}
+
+			// Group order item pattern input
+			const order_by_select = row.querySelector('[name$="[group_order_by]"]');
+			const order_pattern_input = row.querySelector('input[name$="[group_order_item_pattern]"]');
+			if (order_by_select && order_pattern_input) {
+				const is_order_by_item = parseInt(order_by_select.value) === 1; // Widget::GROUP_ORDER_BY_ITEM_VALUE
+				// hide/show its container
+				const container = order_pattern_input.closest('div');
+				if (container) {
+					container.style.display = is_order_by_item ? '' : 'none';
+				}
+				order_pattern_input.disabled = !is_order_by_item;
+			}
 		});
 
 		const add_button = this.#table.querySelector('#group-by-add-row');

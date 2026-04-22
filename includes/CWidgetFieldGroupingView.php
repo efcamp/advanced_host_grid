@@ -101,6 +101,37 @@ class CWidgetFieldGroupingView extends CWidgetFieldView {
 							->setWidth(ZBX_TEXTAREA_MEDIUM_WIDTH)
 							->setAttribute('placeholder', _('val=label:hex, or INHERIT:group_num'))
 					]))->setWidth(ZBX_TEXTAREA_MEDIUM_WIDTH),
+					(new CCol([
+						(new CDiv([
+							(new CSpan(_('Order by: ')))->addStyle('margin-right: 5px;'),
+							(new CSelect($this->field->getName().'[#{rowNum}][group_order_by]'))
+								->addOptions(CSelect::createOptionsFromArray([
+									Widget::GROUP_ORDER_BY_LABEL => _('Label'),
+									Widget::GROUP_ORDER_BY_ITEM_VALUE => _('Item value'),
+									Widget::GROUP_ORDER_BY_HOST_COUNT => _('Host count')
+								]))
+								->setValue('#{group_order_by}')
+								->setId($this->field->getName().'_#{rowNum}_group_order_by')
+								->setWidth(ZBX_TEXTAREA_FILTER_SMALL_WIDTH)
+						]))->addStyle('margin-bottom: 5px;'),
+						(new CDiv([
+							(new CTextBox($this->field->getName().'[#{rowNum}][group_order_item_pattern]', '#{group_order_item_pattern}', false))
+								->setId($this->field->getName().'_#{rowNum}_group_order_item_pattern')
+								->setWidth(ZBX_TEXTAREA_FILTER_SMALL_WIDTH)
+								->setAttribute('placeholder', _('item pattern'))
+						]))->addStyle('margin-bottom: 5px;'),
+						(new CDiv([
+							(new CSpan(_('Direction: ')))->addStyle('margin-right: 5px;'),
+							(new CSelect($this->field->getName().'[#{rowNum}][group_order]'))
+								->addOptions(CSelect::createOptionsFromArray([
+									Widget::GROUP_ORDER_ASC => _('Ascending'),
+									Widget::GROUP_ORDER_DESC => _('Descending')
+								]))
+								->setValue('#{group_order}')
+								->setId($this->field->getName().'_#{rowNum}_group_order')
+								->setWidth(ZBX_TEXTAREA_FILTER_SMALL_WIDTH)
+						]))
+					])),
 					(new CDiv(
 						(new CButton($this->field->getName().'[#{rowNum}][remove]', _('Remove')))
 							->addClass(ZBX_STYLE_BTN_LINK)

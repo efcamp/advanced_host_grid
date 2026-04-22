@@ -25,6 +25,14 @@ class Widget extends CWidget {
 	public const DISPLAY_BAR = 1;
 	public const DISPLAY_INDICATORS = 2;
 
+	// Group order by.
+	public const GROUP_ORDER_BY_LABEL = 0;
+	public const GROUP_ORDER_BY_ITEM_VALUE = 1;
+	public const GROUP_ORDER_BY_HOST_COUNT = 2;
+
+	public const GROUP_ORDER_ASC = 0;
+	public const GROUP_ORDER_DESC = 1;
+
 	// Ordering.
 	public const ORDER_TOP_N = 0;
 	public const ORDER_BOTTOM_N = 1;

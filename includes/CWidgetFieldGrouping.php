@@ -33,7 +33,17 @@ class CWidgetFieldGrouping extends CWidgetField {
 				'tag_name'        => ['type' => API_STRING_UTF8, 'length' => $this->getMaxLength()],
 				'inventory_field' => ['type' => API_STRING_UTF8, 'length' => 64],
 				'item_pattern'    => ['type' => API_STRING_UTF8, 'length' => 255],
-				'value_mappings'  => ['type' => API_STRING_UTF8, 'length' => 2048]
+				'value_mappings'  => ['type' => API_STRING_UTF8, 'length' => 2048],
+				'group_order_by'  => ['type' => API_INT32, 'in' => implode(',', [
+					Widget::GROUP_ORDER_BY_LABEL,
+					Widget::GROUP_ORDER_BY_ITEM_VALUE,
+					Widget::GROUP_ORDER_BY_HOST_COUNT
+				])],
+				'group_order'     => ['type' => API_INT32, 'in' => implode(',', [
+					Widget::GROUP_ORDER_ASC,
+					Widget::GROUP_ORDER_DESC
+				])],
+				'group_order_item_pattern' => ['type' => API_STRING_UTF8, 'length' => 255]
 			]]);
 	}
 
@@ -74,6 +84,15 @@ class CWidgetFieldGrouping extends CWidgetField {
 						);
 					}
 					break;
+			}
+
+			if (array_key_exists('group_order_by', $row) && $row['group_order_by'] == Widget::GROUP_ORDER_BY_ITEM_VALUE) {
+				if (!array_key_exists('group_order_item_pattern', $row) || $row['group_order_item_pattern'] === '') {
+					$errors[] = _s('Invalid parameter "%1$s": %2$s.',
+						_('Group by').' #'.($index + 1),
+						_('group order item pattern cannot be empty')
+					);
+				}
 			}
 		}
 
@@ -148,6 +167,31 @@ class CWidgetFieldGrouping extends CWidgetField {
 					'type' => $this->save_type,
 					'name' => $this->name.'.'.$index.'.value_mappings',
 					'value' => $value['value_mappings']
+				];
+			}
+
+			if (array_key_exists('group_order_by', $value)) {
+				$widget_fields[] = [
+					'type' => ZBX_WIDGET_FIELD_TYPE_INT32,
+					'name' => $this->name.'.'.$index.'.group_order_by',
+					'value' => $value['group_order_by']
+				];
+			}
+
+			if (array_key_exists('group_order', $value)) {
+				$widget_fields[] = [
+					'type' => ZBX_WIDGET_FIELD_TYPE_INT32,
+					'name' => $this->name.'.'.$index.'.group_order',
+					'value' => $value['group_order']
+				];
+			}
+
+			if (array_key_exists('group_order_by', $value) && $value['group_order_by'] == Widget::GROUP_ORDER_BY_ITEM_VALUE
+					&& array_key_exists('group_order_item_pattern', $value) && $value['group_order_item_pattern'] !== '') {
+				$widget_fields[] = [
+					'type' => $this->save_type,
+					'name' => $this->name.'.'.$index.'.group_order_item_pattern',
+					'value' => $value['group_order_item_pattern']
 				];
 			}
 		}
