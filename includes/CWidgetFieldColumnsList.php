@@ -37,7 +37,8 @@ class CWidgetFieldColumnsList extends CWidgetField {
 				'base_color'  => ['type' => API_STRING_UTF8, 'length' => 6],
 				'min'         => ['type' => API_STRING_UTF8, 'length' => 255],
 				'max'         => ['type' => API_STRING_UTF8, 'length' => 255],
-				'text'        => ['type' => API_STRING_UTF8, 'length' => 255],
+				'text'        => ['type' => API_STRING_UTF8, 'length' => 1024],
+				'explode_text' => ['type' => API_INT32, 'in' => '0,1'],
 				'display_value_as' => ['type' => API_INT32, 'in' => '0,1'],
 				'prepend_item' => ['type' => API_INT32, 'in' => '0,1'],
 				'prepend_item_begin' => ['type' => API_STRING_UTF8, 'length' => 255],
@@ -143,6 +144,14 @@ class CWidgetFieldColumnsList extends CWidgetField {
 					'type' => $this->save_type,
 					'name' => $this->name.'.'.$index.'.text',
 					'value' => $column['text']
+				];
+			}
+
+			if (array_key_exists('explode_text', $column)) {
+				$widget_fields[] = [
+					'type' => ZBX_WIDGET_FIELD_TYPE_INT32,
+					'name' => $this->name.'.'.$index.'.explode_text',
+					'value' => $column['explode_text']
 				];
 			}
 

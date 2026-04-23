@@ -9,6 +9,7 @@ use CButton,
 	CCol,
 	CColHeader,
 	CDiv,
+	CInput,
 	CList,
 	CRow,
 	CSpan,
@@ -56,24 +57,24 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 					foreach ($value as $sub_index => $sub_value) {
 						if (is_array($sub_value)) {
 							foreach ($sub_value as $sub_key => $sub_val) {
-								$column_data[] = new CVar(
+								$column_data[] = new CInput('hidden',
 									$this->field->getName().'['.$column_index.']['.$key.']['.$sub_index.']['.$sub_key.']',
-									$sub_val
+									(string)$sub_val
 								);
 							}
 						}
 						else {
-							$column_data[] = new CVar(
+							$column_data[] = new CInput('hidden',
 								$this->field->getName().'['.$column_index.']['.$key.']['.$sub_index.']',
-								$sub_value
+								(string)$sub_value
 							);
 						}
 					}
 				}
 				else {
-					$column_data[] = new CVar(
+					$column_data[] = new CInput('hidden',
 						$this->field->getName().'['.$column_index.']['.$key.']',
-						$value
+						(string)$value
 					);
 				}
 			}
@@ -83,6 +84,9 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 			}
 			elseif ($column['data'] == Widget::DATA_TEXT) {
 				$label = new CTag('em', true, $column['text'] ?? '');
+				if (!empty($column['explode_text'])) {
+					$label = [$label, ' ', (new CSpan(_('(Exploded)')))->addClass(ZBX_STYLE_GREY)];
+				}
 			}
 			elseif (array_key_exists('item', $column)) {
 				$label = $column['item'];
@@ -153,7 +157,12 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 				function getColumnDisplayLabel(col) {
 					switch (parseInt(col.data)) {
 						case DATA_HOST_NAME: return "Host name";
-						case DATA_TEXT: return col.text || "Text";
+						case DATA_TEXT:
+							var lbl = col.text || "Text";
+							if (col.explode_text == 1) {
+								lbl += " (Exploded)";
+							}
+							return lbl;
 						case DATA_ITEM_VALUE: return col.item || "Item";
 						default: return "";
 					}
@@ -181,7 +190,7 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 				}
 
 				function addColumnHiddenInputs(container, index, col) {
-					var fields = ["data", "name", "item", "text", "display",
+					var fields = ["data", "name", "item", "text", "explode_text", "display",
 						"base_color", "min", "max", "prepend_item", "prepend_item_begin", "prepend_item_end", "apply_to_node", "parent_status_priority", "decimal_places", "display_value_as", "columnid"];
 
 					container.appendChild(createHiddenInput(
@@ -322,7 +331,8 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 					if (add_btn) {
 						PopUp("widget.advhostgrid.column.edit", {}, {
 							dialogueid: "advhostgrid-column-edit-overlay",
-							dialogue_class: "modal-popup-generic"
+							dialogue_class: "modal-popup-generic",
+							post: true
 						}).$dialogue[0].addEventListener("dialogue.submit", function(ev) {
 							var col = ev.detail;
 							var new_index = getNextColumnIndex();
@@ -373,7 +383,8 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 
 						PopUp("widget.advhostgrid.column.edit", params, {
 							dialogueid: "advhostgrid-column-edit-overlay",
-							dialogue_class: "modal-popup-generic"
+							dialogue_class: "modal-popup-generic",
+							post: true
 						}).$dialogue[0].addEventListener("dialogue.submit", function(ev) {
 							var updated_col = ev.detail;
 

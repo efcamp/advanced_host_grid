@@ -7,6 +7,7 @@ use API,
 	CControllerDashboardWidgetView,
 	CControllerResponseData,
 	CMenuPopupHelper,
+	CMacrosResolverHelper,
 	CSpan;
 
 use Modules\AdvancedHostGrid\Widget;
@@ -53,7 +54,20 @@ class WidgetView extends CControllerDashboardWidgetView {
 			'preservekeys' => true
 		];
 
-		if (!$this->isTemplateDashboard()) {
+		if ($this->isTemplateDashboard()) {
+			if (empty($this->fields_values['override_hostid'])) {
+				$this->setResponse(new CControllerResponseData([
+					'name' => $this->getInput('name', $this->widget->getName()),
+					'hosts' => [],
+					'columns' => $columns,
+					'group_by' => $group_by,
+					'grouped_data' => [],
+					'user' => ['debug_mode' => $this->getDebugMode()]
+				]));
+				return;
+			}
+			$host_options['hostids'] = $this->fields_values['override_hostid'];
+		} else {
 			if (!empty($this->fields_values['groupids'])) {
 				$host_options['groupids'] = $this->fields_values['groupids'];
 			}
@@ -135,7 +149,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 		if ($item_patterns) {
 			foreach ($item_patterns as $pattern) {
 				$db_items = API::Item()->get([
-					'output' => ['itemid', 'hostid', 'value_type', 'name', 'units', 'valuemapid'],
+					'output' => ['itemid', 'hostid', 'value_type', 'name', 'units', 'valuemapid', 'key_', 'name_resolved'],
 					'selectValueMap' => ['mappings'],
 					'hostids' => $host_ids,
 					'search' => ['name' => $pattern],
@@ -152,6 +166,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 				if ($db_items) {
 					foreach ($db_items as $item) {
 						$hostid = $item['hostid'];
+						$item_name = array_key_exists('name_resolved', $item) ? $item['name_resolved'] : $item['name'];
 						
 						// If not exploding, we only care about the first match for this host+pattern combination
 						if (!$show_all_matches && isset($host_item_values[$hostid][$pattern])) {
@@ -177,7 +192,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 								'raw_value' => $value,
 								'is_numeric' => $is_numeric,
 								'itemid' => $item['itemid'],
-								'item_name' => $item['name'],
+								'item_name' => $item_name,
 								'item' => $item
 							];
 
@@ -217,9 +232,26 @@ class WidgetView extends CControllerDashboardWidgetView {
 			}
 		}
 
+		// ---- Resolve Text Columns using CMacrosResolverHelper ----
+		$text_columns = [];
+		$text_explode_col_idx = null;
+		foreach ($columns as $col_index => $column) {
+			if ($column['data'] == Widget::DATA_TEXT) {
+				$text_columns[$col_index] = $column['text'] ?? '';
+				if (!empty($column['explode_text']) && $text_explode_col_idx === null) {
+					$text_explode_col_idx = $col_index;
+				}
+			}
+		}
+		if ($text_columns && $host_ids) {
+			$text_columns = CMacrosResolverHelper::resolveWidgetTopHostsTextColumns($text_columns, $host_ids);
+		}
+
 		// ---- Build host data rows ----
 		$host_rows = [];
+		$row_index = 0;
 		foreach ($hosts as $hostid => $host) {
+			$row_index++;
 			$base_row = [
 				'hostid' => $hostid,
 				'name' => $host['name'],
@@ -230,13 +262,18 @@ class WidgetView extends CControllerDashboardWidgetView {
 				'severity' => $host_severities[$hostid] ?? 0,
 				'in_maintenance' => (int)$host['maintenance_status'] === HOST_MAINTENANCE_STATUS_ON,
 				'menu_popup' => CMenuPopupHelper::getHost($hostid),
-				'exploded_item_name' => '' // Default for standard rows
+				'exploded_item_name' => '', // Default for standard rows
+				'explosion_index' => 0,
+				'row_index' => $row_index
 			];
 
 			// Expansion Mode: Create one row per matched item
 			if ($show_all_matches && !empty($items_by_host_all[$hostid])) {
+				$exp_idx = 0;
 				foreach ($items_by_host_all[$hostid] as $itemid => $item_info) {
+					$exp_idx++;
 					$row = $base_row;
+					$row['explosion_index'] = $exp_idx;
 					$row['exploded_item_name'] = $item_info['item_name'];
 					$row['exploded_item_pattern'] = $item_info['pattern'];
 					$row['exploded_item_val'] = $item_info['value'];
@@ -321,7 +358,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 							}
 						}
 						elseif ($column['data'] == Widget::DATA_TEXT) {
-							$resolved = $this->resolveTextMacros($column['text'] ?? '', $host);
+							$resolved = isset($text_columns[$col_index][$hostid]) ? $text_columns[$col_index][$hostid] : ($column['text'] ?? '');
 							$cell['value'] = $resolved;
 							$cell['raw_value'] = $resolved;
 						}
@@ -332,7 +369,44 @@ class WidgetView extends CControllerDashboardWidgetView {
 
 					$host_rows[] = $row;
 				}
-			} 
+			}
+			// Text Expansion Mode: Create one row per text line
+			elseif ($text_explode_col_idx !== null && !$show_all_matches) {
+				$text_content = isset($text_columns[$text_explode_col_idx][$hostid]) ? $text_columns[$text_explode_col_idx][$hostid] : '';
+				// Split by newline and remove empty lines
+				$lines = array_filter(array_map('trim', explode("\n", (string)$text_content)), 'strlen');
+
+				$exp_idx = 0;
+				foreach ($lines as $line) {
+					$exp_idx++;
+					$row = $base_row;
+					$row['explosion_index'] = $exp_idx;
+					$row['exploded_item_name'] = $line;
+					$row['columns'] = [];
+					$row['bubble_up_colors'] = [];
+
+					foreach ($columns as $col_index => $column) {
+						$cell = ['value' => '', 'raw_value' => '', 'is_numeric' => false, 'threshold_color' => ''];
+
+						if ($col_index === $text_explode_col_idx) {
+							$cell['value'] = $line;
+							$cell['raw_value'] = $line;
+						}
+						elseif ($column['data'] == Widget::DATA_HOST_NAME) {
+							$cell['value'] = $host['name'];
+							$cell['raw_value'] = $host['name'];
+							if ($row['in_maintenance']) {
+								$m_name = isset($maintenances[$host['maintenanceid']]) ? $maintenances[$host['maintenanceid']]['name'] : _('Maintenance');
+								$cell['maintenance_icon_html'] = (new CSpan())->addClass('icon-maintenance')->setHint($m_name)->toString();
+							}
+						}
+						// other columns stay empty
+
+						$row['columns'][$col_index] = $cell;
+					}
+					$host_rows[] = $row;
+				}
+			}
 			// Standard Mode: One row per host
 			else {
 				$row = $base_row;
@@ -428,7 +502,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 							break;
 							
 						case Widget::DATA_TEXT:
-							$resolved = $this->resolveTextMacros($column['text'] ?? '', $host);
+							$resolved = isset($text_columns[$col_index][$hostid]) ? $text_columns[$col_index][$hostid] : ($column['text'] ?? '');
 							$cell['value'] = $resolved;
 							$cell['raw_value'] = $resolved;
 							break;
@@ -481,12 +555,24 @@ class WidgetView extends CControllerDashboardWidgetView {
 				$val_a = $a['columns'][$real_order_col]['raw_value'] ?? '';
 				$val_b = $b['columns'][$real_order_col]['raw_value'] ?? '';
 				$is_num = ($a['columns'][$real_order_col]['is_numeric'] ?? false) && ($b['columns'][$real_order_col]['is_numeric'] ?? false);
+				
 				if ($is_num) {
 					$cmp = (float) $val_a <=> (float) $val_b;
+				} else {
+					$cmp = strnatcasecmp((string) $val_a, (string) $val_b);
+				}
+
+				if ($cmp !== 0) {
 					return $order == Widget::ORDER_BOTTOM_N ? $cmp : -$cmp;
 				}
-				$cmp = strnatcasecmp((string) $val_a, (string) $val_b);
-				return $order == Widget::ORDER_BOTTOM_N ? -$cmp : $cmp;
+
+				// Tie-breaker 1: Host ID / Row Index
+				if ($a['row_index'] !== $b['row_index']) {
+					return $a['row_index'] <=> $b['row_index'];
+				}
+
+				// Tie-breaker 2: Explosion Index (Preserves order of textarea or item pattern)
+				return $a['explosion_index'] <=> $b['explosion_index'];
 			});
 		}
 		$host_rows = array_slice($host_rows, 0, (int)$show_lines);
@@ -699,18 +785,34 @@ class WidgetView extends CControllerDashboardWidgetView {
 			} elseif ($order_by == Widget::GROUP_ORDER_BY_ITEM_VALUE && $order_pattern !== '') {
 				$val = null;
 				foreach ($group_hosts as $h) {
-					if (isset($host_item_values[$h['hostid']][$order_pattern])) {
+					$v = null;
+					if (isset($h['exploded_item_pattern']) && $h['exploded_item_pattern'] === $order_pattern) {
+						$v = $h['exploded_item_raw'];
+					}
+					elseif (isset($host_item_values[$h['hostid']][$order_pattern])) {
 						$v = $host_item_values[$h['hostid']][$order_pattern]['raw_value'];
+					}
+
+					if ($v !== null) {
 						if (is_numeric($v)) {
 							$v = (float)$v;
 						}
 						if ($val === null) {
 							$val = $v;
 						} else {
-							if ($order_dir == Widget::GROUP_ORDER_DESC) {
-								if ($v > $val) $val = $v;
+							if (is_numeric($v) && is_numeric($val)) {
+								if ($order_dir == Widget::GROUP_ORDER_DESC) {
+									if ((float)$v > (float)$val) $val = $v;
+								} else {
+									if ((float)$v < (float)$val) $val = $v;
+								}
 							} else {
-								if ($v < $val) $val = $v;
+								$cmp = strnatcasecmp((string)$v, (string)$val);
+								if ($order_dir == Widget::GROUP_ORDER_DESC) {
+									if ($cmp > 0) $val = $v;
+								} else {
+									if ($cmp < 0) $val = $v;
+								}
 							}
 						}
 					}
@@ -850,9 +952,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 		return $tree;
 	}
 
-	private function resolveTextMacros(string $text, array $host): string {
-		return str_replace(['{HOST.NAME}', '{HOST.HOST}', '{HOST.ID}'], [$host['name'], $host['host'], $host['hostid']], $text);
-	}
+
 
 	private function getGroupAttributeValue(array $row, array $group_row, array $host_item_values): array {
 		$raw = '';
@@ -1044,6 +1144,10 @@ class WidgetView extends CControllerDashboardWidgetView {
 		$f_val = number_format($value, 4, '.', '');
 		$f_min = number_format($min, 4, '.', '');
 		$f_max = number_format($max, 4, '.', '');
+
+		if ((int)($column['display'] ?? 0) === Widget::DISPLAY_INDICATORS) {
+			$f_val = $f_max;
+		}
 
 		$bar_gauge = (new CBarGauge())
 			->setAttribute('value', $f_val)

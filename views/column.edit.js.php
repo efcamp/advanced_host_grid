@@ -114,7 +114,7 @@ window.advhostgrid_column_edit_form = new class {
 		for (const element of this.#form.querySelectorAll('.js-item-row')) {
 			element.style.display = data_type_item_value ? '' : 'none';
 
-			for (const input of element.querySelectorAll('input')) {
+			for (const input of element.querySelectorAll('input, textarea, select')) {
 				input.disabled = !data_type_item_value;
 			}
 		}
@@ -123,7 +123,7 @@ window.advhostgrid_column_edit_form = new class {
 		for (const element of this.#form.querySelectorAll('.js-prepend-ext-row')) {
 			element.style.display = data_type_item_value && prepend_item ? '' : 'none';
 
-			for (const input of element.querySelectorAll('input')) {
+			for (const input of element.querySelectorAll('input, textarea, select')) {
 				input.disabled = !(data_type_item_value && prepend_item);
 			}
 		}
@@ -132,7 +132,7 @@ window.advhostgrid_column_edit_form = new class {
 		for (const element of this.#form.querySelectorAll('.js-text-row')) {
 			element.style.display = data_type_text ? '' : 'none';
 
-			for (const input of element.querySelectorAll('input')) {
+			for (const input of element.querySelectorAll('input, textarea, select')) {
 				input.disabled = !data_type_text;
 			}
 		}
@@ -141,7 +141,7 @@ window.advhostgrid_column_edit_form = new class {
 		for (const element of this.#form.querySelectorAll('.js-display-row')) {
 			element.style.display = data_type_item_value && display_value_as_numeric ? '' : 'none';
 
-			for (const input of element.querySelectorAll('input')) {
+			for (const input of element.querySelectorAll('input, textarea, select')) {
 				input.disabled = !data_type_item_value || !display_value_as_numeric;
 			}
 		}
@@ -152,7 +152,7 @@ window.advhostgrid_column_edit_form = new class {
 		for (const element of this.#form.querySelectorAll('.js-min-max-row')) {
 			element.style.display = show_min_max ? '' : 'none';
 
-			for (const input of element.querySelectorAll('input')) {
+			for (const input of element.querySelectorAll('input, textarea, select')) {
 				input.disabled = !show_min_max;
 			}
 		}
@@ -161,7 +161,7 @@ window.advhostgrid_column_edit_form = new class {
 		for (const element of this.#form.querySelectorAll('.js-numeric-row, .js-thresholds-row')) {
 			element.style.display = data_type_item_value && display_value_as_numeric ? '' : 'none';
 
-			for (const input of element.querySelectorAll('input')) {
+			for (const input of element.querySelectorAll('input, textarea, select')) {
 				input.disabled = !data_type_item_value || !display_value_as_numeric;
 			}
 		}
@@ -170,7 +170,7 @@ window.advhostgrid_column_edit_form = new class {
 		for (const element of this.#form.querySelectorAll('.js-highlights-row')) {
 			element.style.display = data_type_item_value && !display_value_as_numeric ? '' : 'none';
 
-			for (const input of element.querySelectorAll('input')) {
+			for (const input of element.querySelectorAll('input, textarea, select')) {
 				input.disabled = !data_type_item_value || display_value_as_numeric;
 			}
 		}
@@ -180,7 +180,7 @@ window.advhostgrid_column_edit_form = new class {
 		for (const element of this.#form.querySelectorAll('.js-apply-node-row')) {
 			element.style.display = data_type_item_value ? '' : 'none';
 
-			for (const input of element.querySelectorAll('input')) {
+			for (const input of element.querySelectorAll('input, textarea, select')) {
 				input.disabled = !data_type_item_value;
 			}
 		}

@@ -91,9 +91,16 @@ $form_grid->addItem([
 		->setAsteriskMark()
 		->addClass('js-text-row'),
 	(new CFormField(
-		(new CTextBox('text', $data['text']))
+		(new CTextArea('text', $data['text']))
 			->setWidth(ZBX_TEXTAREA_STANDARD_WIDTH)
-			->setAttribute('placeholder', _('Static text value'))
+			->setAttribute('rows', 3)
+			->setAttribute('placeholder', _('Static text value or macros (one per line if exploding)'))
+	))->addClass('js-text-row'),
+	(new CLabel(_('Display each line as a separate row'), 'explode_text'))->addClass('js-text-row'),
+	(new CFormField(
+		(new CCheckBox('explode_text'))
+			->setChecked((int) $data['explode_text'] === 1)
+			->setUncheckedValue(0)
 	))->addClass('js-text-row')
 ]);
 
