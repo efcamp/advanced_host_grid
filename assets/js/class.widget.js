@@ -61,7 +61,9 @@ class WidgetAdvancedHostGrid extends CWidget {
 	_render() {
 		if (!this._container) return;
 
-		const columnDefs = Object.values(this._columns);
+		const columnDefs = Object.values(this._columns)
+			.map((col, originalIndex) => ({...col, originalIndex}))
+			.filter(col => parseInt(col.is_hidden || 0) === 0);
 
 		if (columnDefs.length === 0) {
 			this._container.innerHTML = '<div class="ahg-no-data">' + t('No data') + '</div>';
@@ -296,7 +298,8 @@ class WidgetAdvancedHostGrid extends CWidget {
 		}
 		
 		const hostColumns = host.columns || [];
-		columnDefs.forEach((col, colIndex) => {
+		columnDefs.forEach((col) => {
+			const colIndex = col.originalIndex;
 			const td = document.createElement('td');
 			td.className = 'ahg-cell ahg-host-cell';
 
@@ -307,8 +310,9 @@ class WidgetAdvancedHostGrid extends CWidget {
 			// Apply threshold coloring.
 			const color = cellData.threshold_color || this._getThresholdColor(col, rawValue, cellData?.is_numeric);
 			const isGauge = [1, 2].includes(parseInt(col.display));
+			const colorCell = parseInt(col.threshold_color_cell !== undefined ? col.threshold_color_cell : 1) === 1;
 
-			if (color && !isGauge) {
+			if (color && !isGauge && colorCell) {
 				td.style.backgroundColor = '#' + color;
 				td.classList.add('ahg-threshold-colored');
 
@@ -329,7 +333,7 @@ class WidgetAdvancedHostGrid extends CWidget {
 				circle.className = 'ahg-status-circle';
 				
 				let rowNativeColor = '';
-				columnDefs.forEach((col, colIdx) => {
+				Object.values(this._columns).forEach((col, colIdx) => {
 					const colData = hostColumns[colIdx] || {};
 					const rVal = colData ? colData.raw_value : '';
 					const c = colData.threshold_color || this._getThresholdColor(col, rVal, colData?.is_numeric);
@@ -578,10 +582,11 @@ class WidgetAdvancedHostGrid extends CWidget {
 	_createHoneycombCell(host, columnDefs) {
         let targetColIndex = -1;
         for (let i = 0; i < columnDefs.length; i++) {
+            const colIdx = columnDefs[i].originalIndex;
             if (parseInt(columnDefs[i].data) === 4 || parseInt(columnDefs[i].data) === 1) { 
                 // Only select this column as the source for the honeycomb shape if it actually has data
-                if (host.columns[i] !== undefined && host.columns[i].raw_value !== '') {
-                    targetColIndex = i;
+                if (host.columns[colIdx] !== undefined && host.columns[colIdx].raw_value !== '') {
+                    targetColIndex = colIdx;
                     break;
                 }
             }

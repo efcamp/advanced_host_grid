@@ -94,7 +94,11 @@ class WidgetForm extends CWidgetForm {
 		// Build column label map.
 		if (array_key_exists('columns', $values)) {
 			foreach ($values['columns'] as $key => $value) {
-				$value['name'] = trim($value['name'] ?? '');
+				$value['name'] = (string)($value['name'] ?? '');
+				$value['is_hidden'] = (int)($value['is_hidden'] ?? 0);
+				$value['threshold_color_cell'] = (int)($value['threshold_color_cell'] ?? 1);
+				$values['columns'][$key] = $value;
+
 				$col_id = (int)$key;
 
 				switch ($value['data']) {

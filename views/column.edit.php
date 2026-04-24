@@ -37,6 +37,17 @@ $form_grid->addItem([
 	)
 ]);
 
+// Hidden.
+$form_grid->addItem([
+	new CLabel(_('Hidden'), 'is_hidden'),
+	new CFormField(
+		(new CCheckBox('is_hidden'))
+			->setId('is_hidden')
+			->setChecked((int) $data['is_hidden'] === 1)
+			->setUncheckedValue(0)
+	)
+]);
+
 // Data type.
 $form_grid->addItem([
 	new CLabel(_('Data'), 'data'),
@@ -238,6 +249,16 @@ $form_grid->addItem([
 ]);
 
 $form_grid->addItem([
+	(new CLabel(_('Color cell background'), 'threshold_color_cell'))->addClass('js-threshold-coloring-row'),
+	(new CFormField(
+		(new CRadioButtonList('threshold_color_cell', (int) $data['threshold_color_cell']))
+			->addValue(_('Yes'), 1)
+			->addValue(_('No'), 0)
+			->setModern()
+	))->addClass('js-threshold-coloring-row')
+]);
+
+$form_grid->addItem([
 	(new CLabel(_('Use status for parent'), 'apply_to_node'))->addClass('js-apply-node-row'),
 	(new CFormField(
 		(new CCheckBox('apply_to_node'))
@@ -264,6 +285,7 @@ $form_grid->addItem([
 	(new CLabel(_('Highlights'), 'highlights_table'))->addClass('js-highlights-row'),
 	(new CFormField($highlights))->addClass('js-highlights-row')
 ]);
+
 
 $form
 	->addItem($form_grid)

@@ -25,7 +25,6 @@ class ColumnEdit extends CController {
 			'display'         => 'int32',
 			'min'             => 'string',
 			'max'             => 'string',
-			'thresholds'      => 'array',
 			'display_value_as' => 'int32',
 			'prepend_item'    => 'in 0,1',
 			'prepend_item_begin' => 'string',
@@ -34,6 +33,8 @@ class ColumnEdit extends CController {
 			'parent_status_priority' => 'in 0,1',
 			'decimal_places'  => 'int32',
 			'columnid'        => 'string',
+			'is_hidden'       => 'in 0,1',
+			'threshold_color_cell' => 'in 0,1',
 			'thresholds'      => 'array',
 			'highlights'      => 'array',
 			'edit'            => 'in 1',
@@ -140,6 +141,8 @@ class ColumnEdit extends CController {
 				'decimal_places'  => 2,
 				'display_value_as' => 0,
 				'columnid'        => '',
+				'is_hidden'       => 0,
+				'threshold_color_cell' => 1,
 				'thresholds'      => [],
 				'highlights'      => []
 			];

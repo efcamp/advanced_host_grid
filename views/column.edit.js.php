@@ -26,7 +26,7 @@ window.advhostgrid_column_edit_form = new class {
 		this.#dialogue = this.#overlay.$dialogue[0];
 		this.#form = document.getElementById(form_id);
 
-		const inputs = this.#form.querySelectorAll('[name="data"], [name="display"], [name="display_value_as"], [name="apply_to_node"], [name="prepend_item"]');
+		const inputs = this.#form.querySelectorAll('[name="data"], [name="display"], [name="display_value_as"], [name="apply_to_node"], [name="prepend_item"], [name="threshold_color_cell"]');
 
 		for (const input of inputs) {
 			input.addEventListener('change', () => this.#updateForm());
@@ -172,6 +172,16 @@ window.advhostgrid_column_edit_form = new class {
 
 			for (const input of element.querySelectorAll('input, textarea, select')) {
 				input.disabled = !data_type_item_value || display_value_as_numeric;
+			}
+		}
+
+		// Threshold Coloring (Bubble only)
+		const show_coloring = data_type_item_value && display_as_is;
+		for (const element of this.#form.querySelectorAll('.js-threshold-coloring-row')) {
+			element.style.display = show_coloring ? '' : 'none';
+
+			for (const input of element.querySelectorAll('input, textarea, select')) {
+				input.disabled = !show_coloring;
 			}
 		}
 

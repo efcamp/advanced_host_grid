@@ -110,9 +110,14 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 				))->addClass('column-filter-badge');
 			}
 
+			$hidden_info = '';
+			if (!empty($column['is_hidden'])) {
+				$hidden_info = ' ' . (new CSpan(_('(Hidden)')))->addClass(ZBX_STYLE_GREY);
+			}
+
 			$view->addRow([
 				(new CCol((new CDiv)->addClass(ZBX_STYLE_DRAG_ICON)))->addClass(ZBX_STYLE_TD_DRAG_ICON),
-				(new CDiv($column['name'] ?? ''))->addClass('text'),
+				(new CDiv([$column['name'] ?? '', $hidden_info]))->addClass('text'),
 				(new CDiv([$label, $filter_info]))->addClass('text'),
 				[
 					(new CList($row_actions))->addClass(ZBX_STYLE_HOR_LIST),
@@ -168,6 +173,14 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 					}
 				}
 
+				function getColumnNameLabel(col) {
+					var lbl = col.name || "";
+					if (col.is_hidden == 1) {
+						lbl += " (Hidden)";
+					}
+					return lbl;
+				}
+
 				function getNextColumnIndex() {
 					var inputs = columns_table.querySelectorAll("input[type=hidden]");
 					var max_index = -1;
@@ -191,7 +204,7 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 
 				function addColumnHiddenInputs(container, index, col) {
 					var fields = ["data", "name", "item", "text", "explode_text", "display",
-						"base_color", "min", "max", "prepend_item", "prepend_item_begin", "prepend_item_end", "apply_to_node", "parent_status_priority", "decimal_places", "display_value_as", "columnid"];
+						"base_color", "min", "max", "prepend_item", "prepend_item_begin", "prepend_item_end", "apply_to_node", "parent_status_priority", "decimal_places", "display_value_as", "columnid", "is_hidden", "threshold_color_cell"];
 
 					container.appendChild(createHiddenInput(
 						"sortorder[" + "'.$field_name.'" + "][]", index
@@ -265,7 +278,7 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 					var td_name = document.createElement("td");
 					var name_div = document.createElement("div");
 					name_div.className = "text";
-					name_div.textContent = col.name || "";
+					name_div.textContent = getColumnNameLabel(col);
 					td_name.appendChild(name_div);
 					tr.appendChild(td_name);
 
@@ -409,7 +422,7 @@ class CWidgetFieldColumnsListView extends CWidgetFieldView {
 
 							// Update visible cells.
 							var name_div = row.querySelector("td:nth-child(2) .text");
-							if (name_div) name_div.textContent = updated_col.name || "";
+							if (name_div) name_div.textContent = getColumnNameLabel(updated_col);
 
 							var data_div = row.querySelector("td:nth-child(3) .text");
 							if (data_div) {

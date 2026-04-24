@@ -47,6 +47,8 @@ class CWidgetFieldColumnsList extends CWidgetField {
 				'parent_status_priority' => ['type' => API_INT32, 'in' => '0,1'],
 				'decimal_places' => ['type' => API_INT32, 'in' => '0:10'],
 				'columnid'    => ['type' => API_STRING_UTF8, 'length' => 255],
+				'is_hidden'   => ['type' => API_INT32, 'in' => '0,1'],
+				'threshold_color_cell' => ['type' => API_INT32, 'in' => '0,1'],
 				'thresholds'  => ['type' => API_OBJECTS, 'fields' => [
 					'color'     => ['type' => API_STRING_UTF8, 'flags' => API_REQUIRED, 'length' => 6],
 					'threshold' => ['type' => API_STRING_UTF8, 'flags' => API_REQUIRED, 'length' => 255]
@@ -151,7 +153,7 @@ class CWidgetFieldColumnsList extends CWidgetField {
 				$widget_fields[] = [
 					'type' => ZBX_WIDGET_FIELD_TYPE_INT32,
 					'name' => $this->name.'.'.$index.'.explode_text',
-					'value' => $column['explode_text']
+					'value' => (int)$column['explode_text']
 				];
 			}
 
@@ -159,7 +161,7 @@ class CWidgetFieldColumnsList extends CWidgetField {
 				$widget_fields[] = [
 					'type' => ZBX_WIDGET_FIELD_TYPE_INT32,
 					'name' => $this->name.'.'.$index.'.prepend_item',
-					'value' => $column['prepend_item']
+					'value' => (int)$column['prepend_item']
 				];
 			}
 			if (array_key_exists('prepend_item_begin', $column) && $column['prepend_item_begin'] !== '') {
@@ -189,7 +191,7 @@ class CWidgetFieldColumnsList extends CWidgetField {
 				$widget_fields[] = [
 					'type' => ZBX_WIDGET_FIELD_TYPE_INT32,
 					'name' => $this->name.'.'.$index.'.apply_to_node',
-					'value' => $column['apply_to_node']
+					'value' => (int)$column['apply_to_node']
 				];
 			}
 
@@ -216,6 +218,17 @@ class CWidgetFieldColumnsList extends CWidgetField {
 					'value' => $column['columnid']
 				];
 			}
+			$widget_fields[] = [
+				'type' => ZBX_WIDGET_FIELD_TYPE_INT32,
+				'name' => $this->name.'.'.$index.'.is_hidden',
+				'value' => (int)($column['is_hidden'] ?? 0)
+			];
+
+			$widget_fields[] = [
+				'type' => ZBX_WIDGET_FIELD_TYPE_INT32,
+				'name' => $this->name.'.'.$index.'.threshold_color_cell',
+				'value' => (int)($column['threshold_color_cell'] ?? 1)
+			];
 
 			if (array_key_exists('thresholds', $column)) {
 				foreach ($column['thresholds'] as $t_index => $threshold) {
