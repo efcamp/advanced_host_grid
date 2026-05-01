@@ -147,6 +147,10 @@ class WidgetView extends CControllerDashboardWidgetView {
 		$host_item_values = [];
 		$items_by_host_all = []; // [hostid][itemid] => [item_info...]
 		if ($item_patterns) {
+			$all_db_items = [];
+			$matched_patterns = [];
+			$first_match_tracker = [];
+
 			foreach ($item_patterns as $pattern) {
 				$db_items = API::Item()->get([
 					'output' => ['itemid', 'hostid', 'value_type', 'name', 'units', 'valuemapid', 'key_', 'name_resolved'],
@@ -166,44 +170,54 @@ class WidgetView extends CControllerDashboardWidgetView {
 				if ($db_items) {
 					foreach ($db_items as $item) {
 						$hostid = $item['hostid'];
-						$item_name = array_key_exists('name_resolved', $item) ? $item['name_resolved'] : $item['name'];
 						
 						// If not exploding, we only care about the first match for this host+pattern combination
-						if (!$show_all_matches && isset($host_item_values[$hostid][$pattern])) {
+						if (!$show_all_matches && isset($first_match_tracker[$hostid][$pattern])) {
 							continue;
 						}
 
-						$history = API::History()->get([
-							'output' => ['value'],
-							'itemids' => [$item['itemid']],
-							'history' => $item['value_type'],
-							'sortfield' => 'clock',
-							'sortorder' => ZBX_SORT_DOWN,
-							'limit' => 1
-						]);
+						$first_match_tracker[$hostid][$pattern] = true;
 
-						if ($history) {
-							$value = $history[0]['value'];
-							$is_numeric = in_array($item['value_type'], [ITEM_VALUE_TYPE_UINT64, ITEM_VALUE_TYPE_FLOAT]);
-							$display_value = $is_numeric ? formatHistoryValue($value, $item) : $value;
-							
-							$cell_data = [
-								'value' => $display_value,
-								'raw_value' => $value,
-								'is_numeric' => $is_numeric,
-								'itemid' => $item['itemid'],
-								'item_name' => $item_name,
-								'item' => $item
-							];
+						if (!isset($all_db_items[$item['itemid']])) {
+							$all_db_items[$item['itemid']] = $item;
+							$matched_patterns[$item['itemid']] = [];
+						}
+						
+						$matched_patterns[$item['itemid']][] = $pattern;
+					}
+				}
+			}
 
-							// Map value to the specific host and pattern
+			if ($all_db_items) {
+				// Batch fetch the latest history value for all matched items efficiently
+				$history = \Manager::History()->getLastValues($all_db_items, 1);
+
+				foreach ($all_db_items as $itemid => $item) {
+					if (isset($history[$itemid]) && !empty($history[$itemid])) {
+						$val_row = $history[$itemid][0];
+						$value = $val_row['value'];
+						$is_numeric = in_array($item['value_type'], [ITEM_VALUE_TYPE_UINT64, ITEM_VALUE_TYPE_FLOAT]);
+						$display_value = $is_numeric ? formatHistoryValue($value, $item) : $value;
+						
+						$item_name = array_key_exists('name_resolved', $item) ? $item['name_resolved'] : $item['name'];
+						
+						$cell_data = [
+							'value' => $display_value,
+							'raw_value' => $value,
+							'is_numeric' => $is_numeric,
+							'itemid' => $itemid,
+							'item_name' => $item_name,
+							'item' => $item
+						];
+						
+						$hostid = $item['hostid'];
+						foreach ($matched_patterns[$itemid] as $pattern) {
 							if (!$show_all_matches) {
-								$host_item_values[$hostid][$pattern] = $cell_data;
+								if (!isset($host_item_values[$hostid][$pattern])) {
+									$host_item_values[$hostid][$pattern] = $cell_data;
+								}
 							} else {
-								// Store in a global "matches for this host" list for explosion
-								$items_by_host_all[$hostid][$item['itemid']] = $cell_data + ['pattern' => $pattern];
-								
-								// Critical: retain the first matched value inside the pattern dictionary so Grouping doesn't fail
+								$items_by_host_all[$hostid][$itemid] = $cell_data + ['pattern' => $pattern];
 								if (!isset($host_item_values[$hostid][$pattern])) {
 									$host_item_values[$hostid][$pattern] = $cell_data;
 								}
@@ -762,11 +776,42 @@ class WidgetView extends CControllerDashboardWidgetView {
 		if ($level >= $total_levels) return [['label' => '', 'host_count' => count($hosts), 'hosts' => $hosts, 'children' => []]];
 		
 		$groups = [];
+		$mapped_colors = [];
 		foreach ($hosts as $h) {
 			$raw_val = $h['grouping_raw_values'][$level] ?? Widget::UNKNOWN_GROUP_LABEL;
 			if ($raw_val === '' || $raw_val === null) $raw_val = Widget::UNKNOWN_GROUP_LABEL;
-			if (!isset($groups[$raw_val])) $groups[$raw_val] = [];
-			$groups[$raw_val][] = $h;
+			
+			$mapped_label = $h['grouping_values'][$level] ?? $raw_val;
+			$mapped_color = '';
+
+			// 1. Mapping lookup (Direct or Wildcard)
+			if (isset($group_mappings[$level])) {
+				$matched = false;
+				$level_rules = $group_mappings[$level];
+
+				foreach ($level_rules as $rule) {
+					if ($this->matchRule($rule, $raw_val)) {
+						$mapped_label = $rule['label'];
+						if ($rule['color'] !== '') {
+							$mapped_color = $rule['color'];
+						}
+						$matched = true;
+						break;
+					}
+				}
+
+				// If overrides are defined for this level but we didn't match, 
+				// use default grey to stop parent color inheritance.
+				if (!$matched && in_array($level, $explicit_levels)) {
+					$mapped_color = '6c6c6c';
+				}
+			}
+
+			if (!isset($groups[$mapped_label])) {
+				$groups[$mapped_label] = [];
+				$mapped_colors[$mapped_label] = $mapped_color;
+			}
+			$groups[$mapped_label][] = $h;
 		}
 
 		$group_row = $group_by[$level] ?? [];
@@ -775,13 +820,13 @@ class WidgetView extends CControllerDashboardWidgetView {
 		$order_pattern = (string)($group_row['group_order_item_pattern'] ?? '');
 
 		$group_sort_values = [];
-		foreach ($groups as $raw_value => $group_hosts) {
-			if ($raw_value === Widget::UNKNOWN_GROUP_LABEL) {
-				$group_sort_values[$raw_value] = null;
+		foreach ($groups as $mapped_label => $group_hosts) {
+			if ($mapped_label === Widget::UNKNOWN_GROUP_LABEL) {
+				$group_sort_values[$mapped_label] = null;
 				continue;
 			}
 			if ($order_by == Widget::GROUP_ORDER_BY_HOST_COUNT) {
-				$group_sort_values[$raw_value] = count($group_hosts);
+				$group_sort_values[$mapped_label] = count($group_hosts);
 			} elseif ($order_by == Widget::GROUP_ORDER_BY_ITEM_VALUE && $order_pattern !== '') {
 				$val = null;
 				foreach ($group_hosts as $h) {
@@ -817,9 +862,9 @@ class WidgetView extends CControllerDashboardWidgetView {
 						}
 					}
 				}
-				$group_sort_values[$raw_value] = $val;
+				$group_sort_values[$mapped_label] = $val;
 			} else {
-				$group_sort_values[$raw_value] = $raw_value;
+				$group_sort_values[$mapped_label] = $mapped_label;
 			}
 		}
 
@@ -852,32 +897,8 @@ class WidgetView extends CControllerDashboardWidgetView {
 		});
 
 		$tree = [];
-		foreach ($groups as $raw_value => $group_hosts) {
-			$formatted_value = $group_hosts[0]['grouping_values'][$level] ?? $raw_value;
-			$node = ['label' => $formatted_value, 'host_count' => count($group_hosts), 'color' => ''];
-			
-			// 1. Mapping lookup (Direct or Wildcard)
-			if (isset($group_mappings[$level])) {
-				$matched = false;
-				$level_rules = $group_mappings[$level];
-
-				foreach ($level_rules as $rule) {
-					if ($this->matchRule($rule, $raw_value)) {
-						$node['label'] = $rule['label'];
-						if ($rule['color'] !== '') {
-							$node['color'] = $rule['color'];
-						}
-						$matched = true;
-						break;
-					}
-				}
-
-				// If overrides are defined for this level but we didn't match, 
-				// use default grey to stop parent color inheritance.
-				if (!$matched && in_array($level, $explicit_levels)) {
-					$node['color'] = '6c6c6c';
-				}
-			}
+		foreach ($groups as $mapped_label => $group_hosts) {
+			$node = ['label' => $mapped_label, 'host_count' => count($group_hosts), 'color' => $mapped_colors[$mapped_label]];
 
 			// 2. Inheritance check (Rollup)
 			if ($node['color'] === '' && isset($group_inherits[$level])) {
@@ -1045,6 +1066,11 @@ class WidgetView extends CControllerDashboardWidgetView {
 			if ($entry === '') continue;
 
 			$eq_pos = strpos($entry, '=');
+			if ($eq_pos !== false && $eq_pos > 0 && in_array($entry[$eq_pos - 1], ['!', '<', '>'])) {
+				// The first '=' is part of an operator (!=, <=, >=). Find the next one.
+				$eq_pos = strpos($entry, '=', $eq_pos + 1);
+			}
+
 			if ($eq_pos === false) continue;
 
 			$condition = trim(substr($entry, 0, $eq_pos));
