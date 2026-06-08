@@ -80,6 +80,11 @@ if (array_key_exists('filter_logic', $data['fields'])) {
 			: null
 	)
 	->addField(
+		array_key_exists('remember_expanded', $data['fields'])
+			? new CWidgetFieldCheckBoxView($data['fields']['remember_expanded'])
+			: null
+	)
+	->addField(
 		array_key_exists('honeycomb_view', $data['fields'])
 			? new CWidgetFieldCheckBoxView($data['fields']['honeycomb_view'])
 			: null

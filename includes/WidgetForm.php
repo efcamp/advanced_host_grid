@@ -186,6 +186,10 @@ class WidgetForm extends CWidgetForm {
 					->setDefault(0)
 			)
 			->addField(
+				(new CWidgetFieldCheckBox('remember_expanded', _('Remember expanded groups')))
+					->setDefault(0)
+			)
+			->addField(
 				(new CWidgetFieldCheckBox('maintenance',
 					$this->isTemplateDashboard()
 						? _('Show data in maintenance')

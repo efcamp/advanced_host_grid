@@ -24,6 +24,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 		$show_host_count = (bool)($this->fields_values['show_host_count'] ?? false);
 		$show_all_matches = (bool)($this->fields_values['show_all_matches'] ?? false);
 		$expand_depth = (int)($this->fields_values['expand_depth'] ?? 1);
+		$remember_expanded = (bool)($this->fields_values['remember_expanded'] ?? false);
 		$grouping_color_full = (bool)($this->fields_values['grouping_color_full'] ?? false);
 
 		$honeycomb_view = (bool)($this->fields_values['honeycomb_view'] ?? false);
@@ -630,6 +631,7 @@ class WidgetView extends CControllerDashboardWidgetView {
 			'host_count' => count($host_rows),
 			'show_host_count' => $show_host_count,
 			'expand_depth' => $expand_depth,
+			'remember_expanded' => $remember_expanded,
 			'grouping_color_full' => $grouping_color_full,
 			'honeycomb_view' => $honeycomb_view,
 			'honeycomb_shape' => $honeycomb_shape,
@@ -719,7 +721,14 @@ class WidgetView extends CControllerDashboardWidgetView {
 					continue;
 				}
 
-				$res = false;
+				$is_negative_op = in_array($op, [
+					Widget::FILTER_OP_NOT_EQUALS,
+					Widget::FILTER_OP_NOT_CONTAINS,
+					Widget::FILTER_OP_NOT_EXISTS
+				]);
+
+				$res = $is_negative_op ? true : false;
+				
 				foreach ($match_values as $raw) {
 					$m_res = false;
 					switch ($op) {
@@ -734,7 +743,18 @@ class WidgetView extends CControllerDashboardWidgetView {
 						case Widget::FILTER_OP_EXISTS: $m_res = ($raw !== '' && $raw !== null); break;
 						case Widget::FILTER_OP_NOT_EXISTS: $m_res = ($raw === '' || $raw === null); break;
 					}
-					if ($m_res) { $res = true; break; }
+
+					if ($is_negative_op) {
+						if (!$m_res) {
+							$res = false;
+							break;
+						}
+					} else {
+						if ($m_res) {
+							$res = true;
+							break;
+						}
+					}
 				}
 				$results[$i] = $res;
 			}

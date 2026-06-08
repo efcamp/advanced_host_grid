@@ -34,11 +34,30 @@ class WidgetAdvancedHostGrid extends CWidget {
 		this._host_count = response.host_count || 0;
 		this._show_host_count = response.show_host_count || false;
 		this._expand_depth = response.expand_depth !== undefined ? parseInt(response.expand_depth) : 1;
+		this._remember_expanded = response.remember_expanded || false;
 		this._grouping_color_full = response.grouping_color_full || false;
 		this._honeycomb_view = response.honeycomb_view || false;
 		this._honeycomb_shape = response.honeycomb_shape || 0;
 		this._honeycomb_primary_label = response.honeycomb_primary_label !== undefined ? response.honeycomb_primary_label : 2;
 		this._honeycomb_secondary_label = response.honeycomb_secondary_label !== undefined ? response.honeycomb_secondary_label : 0;
+
+		if (this._remember_expanded && !this._expanded_loaded) {
+			const uid = this._unique_id || this._uniqueid || '';
+			if (uid) {
+				const saved = localStorage.getItem('ahg_expanded_' + uid);
+				if (saved) {
+					try {
+						this._expanded = JSON.parse(saved);
+					} catch (e) {}
+				}
+			}
+			this._expanded_loaded = true;
+		} else if (!this._remember_expanded) {
+			const uid = this._unique_id || this._uniqueid || '';
+			if (uid) {
+				localStorage.removeItem('ahg_expanded_' + uid);
+			}
+		}
 
 		super.setContents(response);
 
@@ -259,6 +278,13 @@ class WidgetAdvancedHostGrid extends CWidget {
 							this._expanded[key] = false;
 						}
 					});
+				}
+
+				if (this._remember_expanded) {
+					const uid = this._unique_id || this._uniqueid || '';
+					if (uid) {
+						localStorage.setItem('ahg_expanded_' + uid, JSON.stringify(this._expanded));
+					}
 				}
 
 				this._container.innerHTML = '';

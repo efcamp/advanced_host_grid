@@ -87,9 +87,6 @@
 .ahg-group-toggle {
 	padding: 2px 10px;
 	border-bottom: 0;
-	display: flex;
-	align-items: center;
-	gap: 6px;
 }
 
 .ahg-group-level-0 .ahg-group-toggle,
@@ -110,12 +107,14 @@
 	font-size: 10px;
 	color: #768d99;
 	transition: transform 0.2s ease;
+	vertical-align: middle;
 }
 
 .ahg-group-label {
 	font-weight: normal;
 	color: #1f2c33;
 	margin-left: 4px;
+	vertical-align: middle;
 }
 
 .ahg-group-count {
@@ -175,6 +174,7 @@
 	border-radius: 50%;
 	background-color: #ccc;
 	flex-shrink: 0;
+	vertical-align: middle;
 }
 
 /* Maintenance icon - using native Zabbix 7.4 system classes */

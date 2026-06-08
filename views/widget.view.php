@@ -18,6 +18,7 @@
 	->setVar('host_count', $data['host_count'] ?? 0)
 	->setVar('show_host_count', $data['show_host_count'] ?? false)
 	->setVar('expand_depth', $data['expand_depth'] ?? 1)
+	->setVar('remember_expanded', $data['remember_expanded'] ?? false)
 	->setVar('grouping_color_full', $data['grouping_color_full'] ?? false)
 	->setVar('honeycomb_view', $data['honeycomb_view'] ?? false)
 	->setVar('honeycomb_shape', $data['honeycomb_shape'] ?? 0)
